@@ -9,6 +9,24 @@ const BATCH_SIZE = 12      // channels per load
 const VIDEOS_PER_CH = 3    // videos per channel
 const CACHE_KEY = 'yt_subs_v1'
 const CACHE_TTL = 4 * 60 * 60 * 1000 // 4 hours
+const FAVORITES_KEY = 'yt_subs_favorites'
+
+function getFavorites() {
+  try { return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY)) ?? []) }
+  catch { return new Set() }
+}
+
+function saveFavorites(favSet) {
+  try { localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favSet])) }
+  catch {}
+}
+
+function toggleFavorite(channelId) {
+  const favs = getFavorites()
+  if (favs.has(channelId)) favs.delete(channelId)
+  else favs.add(channelId)
+  saveFavorites(favs)
+}
 
 function saveToStorage() {
   try {
@@ -86,26 +104,53 @@ function getVisibleVideos() {
     : _allVideos
 }
 
-function renderSidebar() {
-  const sidebar = document.getElementById('sub-sidebar')
-  if (!sidebar) return
+const STAR_FILLED = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 shrink-0"><path d="M12 2l2.582 5.236 5.776.839-4.179 4.07.986 5.751L12 15.252l-5.165 2.718.986-5.751-4.179-4.07 5.776-.839z"/></svg>`
+const STAR_OUTLINE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-4 h-4 shrink-0"><path stroke-linejoin="round" d="M12 2l2.582 5.236 5.776.839-4.179 4.07.986 5.751L12 15.252l-5.165 2.718.986-5.751-4.179-4.07 5.776-.839z"/></svg>`
 
-  sidebar.innerHTML = `
-    <button
-      class="sidebar-ch w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${!_selectedChannelId ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900'}"
-      data-id=""
-    >
-      Todos
-    </button>
-    ${_channels.map(ch => `
+function channelItemHTML(ch, isFav) {
+  const selected = _selectedChannelId === ch.id
+  return `
+    <div class="flex items-center rounded-lg ${selected ? 'bg-neutral-800' : 'hover:bg-neutral-900'}">
       <button
-        class="sidebar-ch w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${_selectedChannelId === ch.id ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900'}"
+        class="sidebar-ch flex-1 flex items-center gap-2 pl-3 pr-1 py-2 text-sm transition-colors text-left ${selected ? 'text-neutral-100' : 'text-neutral-400'}"
         data-id="${escapeHtml(ch.id)}"
       >
         ${ch.thumbnail ? `<img src="${escapeHtml(ch.thumbnail)}" alt="" class="w-6 h-6 rounded-full object-cover shrink-0" />` : ''}
         <span class="truncate">${escapeHtml(ch.title)}</span>
       </button>
-    `).join('')}
+      <button
+        class="fav-btn px-2 py-2 transition-colors ${isFav ? 'text-yellow-400' : 'text-neutral-700'}"
+        data-fav-id="${escapeHtml(ch.id)}"
+        aria-label="${isFav ? 'Quitar de favoritos' : 'Añadir a favoritos'}"
+      >${isFav ? STAR_FILLED : STAR_OUTLINE}</button>
+    </div>
+  `
+}
+
+function renderSidebar() {
+  const sidebar = document.getElementById('sub-sidebar')
+  if (!sidebar) return
+
+  const favs = getFavorites()
+  const favorites = _channels.filter(ch => favs.has(ch.id))
+  const rest = _channels.filter(ch => !favs.has(ch.id))
+
+  sidebar.innerHTML = `
+    <button
+      class="sidebar-ch w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${!_selectedChannelId ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400 hover:bg-neutral-900'}"
+      data-id=""
+    >
+      Todos
+    </button>
+    ${favorites.length > 0 ? `
+      <div class="flex items-center gap-1.5 px-2 pt-3 pb-1">
+        <span class="text-yellow-500/70">${STAR_FILLED}</span>
+        <span class="text-xs font-medium text-neutral-500 uppercase tracking-wide">Favoritos</span>
+      </div>
+      ${favorites.map(ch => channelItemHTML(ch, true)).join('')}
+      <div class="my-2 border-t border-neutral-800"></div>
+    ` : ''}
+    ${rest.map(ch => channelItemHTML(ch, false)).join('')}
   `
 
   sidebar.querySelectorAll('.sidebar-ch').forEach(btn => {
@@ -120,6 +165,14 @@ function renderSidebar() {
         updateSentinel()
         setupInfiniteScroll()
       }
+    })
+  })
+
+  sidebar.querySelectorAll('.fav-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation()
+      toggleFavorite(btn.dataset.favId)
+      renderSidebar()
     })
   })
 }
