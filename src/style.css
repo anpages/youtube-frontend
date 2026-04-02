@@ -39,6 +39,7 @@ html.light .hover\:bg-neutral-700:hover { background-color: #cbd5e1; }
 html.light .hover\:bg-neutral-600:hover { background-color: #94a3b8; }
 html.light .hover\:text-neutral-200:hover { color: #1e293b; }
 html.light .hover\:text-neutral-100:hover { color: #0f172a; }
+html.light .group:hover .group-hover\:text-neutral-100 { color: #0f172a; }
 
 @layer utilities {
   .line-clamp-2 {
