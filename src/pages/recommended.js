@@ -57,7 +57,7 @@ function buildLayout() {
   return `
     <div class="max-w-7xl mx-auto px-4 pt-6">
       <h1 class="text-xl font-bold mb-6">Recomendados</h1>
-      <div id="rec-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6"></div>
+      <div id="rec-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-8"></div>
       <div id="rec-sentinel" class="flex justify-center py-6"></div>
     </div>
   `
