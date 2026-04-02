@@ -258,14 +258,22 @@ function setupInfiniteScroll() {
   _observer.observe(sentinel)
 }
 
+function buildLayout() {
+  return `
+    <div class="flex min-h-screen">
+      <aside class="w-56 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto sticky top-0 max-h-screen">
+        <div id="sub-sidebar" class="space-y-0.5"></div>
+      </aside>
+      <div class="flex-1 min-w-0 px-4 py-4">
+        <div id="video-grid" class="grid grid-cols-3 gap-x-4 gap-y-6"></div>
+        <div id="sub-sentinel"></div>
+      </div>
+    </div>
+  `
+}
+
 export async function renderSubscriptions() {
   const app = document.getElementById('app')
-  _selectedChannelId = null
-  _allVideos = []
-  _channels = []
-  _loadedUpTo = 0
-  _loading = false
-  _observer?.disconnect()
 
   if (!isAuthenticated()) {
     app.innerHTML = `
@@ -279,6 +287,25 @@ export async function renderSubscriptions() {
     document.getElementById('sub-signin-btn').addEventListener('click', signIn)
     return
   }
+
+  // Restore from cache without re-fetching
+  if (_channels.length > 0) {
+    app.innerHTML = buildLayout()
+    renderSidebar()
+    _renderedCount = 0
+    renderVideoGrid()
+    updateSentinel()
+    setupInfiniteScroll()
+    return
+  }
+
+  _selectedChannelId = null
+  _allVideos = []
+  _channels = []
+  _loadedUpTo = 0
+  _renderedCount = 0
+  _loading = false
+  _observer?.disconnect()
 
   app.innerHTML = `
     <div class="flex flex-col items-center justify-center min-h-[60vh]">
@@ -306,18 +333,7 @@ export async function renderSubscriptions() {
     const channelMap = await fetchChannelMap(channelIds)
     _channels = [...channelMap.values()]
 
-    // Render layout with sidebar immediately
-    app.innerHTML = `
-      <div class="flex min-h-screen">
-        <aside class="w-56 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto sticky top-0 max-h-screen">
-          <div id="sub-sidebar" class="space-y-0.5"></div>
-        </aside>
-        <div class="flex-1 min-w-0 px-4 py-4">
-          <div id="video-grid" class="grid grid-cols-3 gap-x-4 gap-y-6"></div>
-          <div id="sub-sentinel"></div>
-        </div>
-      </div>
-    `
+    app.innerHTML = buildLayout()
 
     renderSidebar()
     await loadNextBatch()

@@ -14,6 +14,22 @@ function getRoute() {
   return { path: path || '/', params }
 }
 
+// Scroll persistence
+let _scrollTimer = null
+window.addEventListener('scroll', () => {
+  clearTimeout(_scrollTimer)
+  _scrollTimer = setTimeout(() => {
+    try { sessionStorage.setItem(`sy:${getRoute().path}`, window.scrollY) } catch {}
+  }, 150)
+}, { passive: true })
+
+function restoreScroll(path) {
+  try {
+    const y = parseInt(sessionStorage.getItem(`sy:${path}`) ?? '0')
+    if (y > 0) requestAnimationFrame(() => window.scrollTo(0, y))
+  } catch {}
+}
+
 async function handleRoute() {
   const { path, params } = getRoute()
 
@@ -31,10 +47,13 @@ async function handleRoute() {
     await renderWatch(params.get('v') ?? '')
   } else if (path === '/subscriptions') {
     await renderSubscriptions()
+    restoreScroll(path)
   } else if (path === '/history') {
     renderHistory()
+    restoreScroll(path)
   } else if (path === '/recommended') {
     await renderRecommended()
+    restoreScroll(path)
   } else {
     app.innerHTML = `
       <div class="text-center py-24 space-y-3">
