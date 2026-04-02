@@ -43,6 +43,14 @@ export function initAuth() {
 }
 
 export function signIn() {
+  if (!window.google?.accounts?.oauth2) {
+    alert('El servicio de Google aún no ha cargado. Espera un momento y vuelve a intentarlo.')
+    return
+  }
+  if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+    alert('Falta la variable de entorno VITE_GOOGLE_CLIENT_ID.')
+    return
+  }
   if (!_tokenClient) {
     _tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
