@@ -57,7 +57,7 @@ export function signIn() {
       scope: SCOPES,
       callback: async (response) => {
         if (response.error) {
-          console.error('OAuth error:', response.error)
+          alert(`Error de autenticación: ${response.error}\n${response.error_description ?? ''}`)
           return
         }
         _token = {
