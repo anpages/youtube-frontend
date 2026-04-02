@@ -32,6 +32,7 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
     `
 
   const header = document.getElementById('header')
+  header.classList.remove('hidden')
 
   if (currentPath === '/' && !authed) {
     header.innerHTML = ''
