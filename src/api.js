@@ -2,10 +2,41 @@ import { getToken } from './auth.js'
 
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
 const BASE = 'https://www.googleapis.com/youtube/v3'
+const QUOTA_KEY = 'yt_quota_v1'
+const QUOTA_LIMIT = 10_000
+
+// ── Quota tracking ────────────────────────────────────────────────────────────
+
+function getPTDate() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+}
+
+function trackQuota(units) {
+  try {
+    const today = getPTDate()
+    const raw = localStorage.getItem(QUOTA_KEY)
+    const data = raw ? JSON.parse(raw) : {}
+    const used = data.date === today ? (data.used ?? 0) : 0
+    localStorage.setItem(QUOTA_KEY, JSON.stringify({ date: today, used: used + units }))
+    document.dispatchEvent(new CustomEvent('quota-updated'))
+  } catch {}
+}
+
+export function getQuotaUsage() {
+  try {
+    const today = getPTDate()
+    const raw = localStorage.getItem(QUOTA_KEY)
+    if (!raw) return { used: 0, limit: QUOTA_LIMIT }
+    const data = JSON.parse(raw)
+    return { used: data.date === today ? (data.used ?? 0) : 0, limit: QUOTA_LIMIT }
+  } catch { return { used: 0, limit: QUOTA_LIMIT } }
+}
 
 // ── Public endpoints (API key) ────────────────────────────────────────────────
 
-async function get(endpoint, params) {
+// Quota costs: search=100, videos/channels/playlistItems/subscriptions.list=1
+// subscriptions.insert/delete=50
+async function get(endpoint, params, quotaCost = 1) {
   if (!API_KEY) throw new Error('Missing VITE_YOUTUBE_API_KEY in .env')
   const url = new URL(`${BASE}/${endpoint}`)
   url.searchParams.set('key', API_KEY)
@@ -15,6 +46,7 @@ async function get(endpoint, params) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err?.error?.message ?? `HTTP ${res.status}`)
   }
+  trackQuota(quotaCost)
   return res.json()
 }
 
@@ -33,7 +65,7 @@ export function searchVideos(q, maxResults = 24) {
     q,
     type: 'video',
     maxResults,
-  })
+  }, 100)
 }
 
 export function getVideoDetails(id) {
@@ -51,7 +83,7 @@ function requireToken() {
   return token
 }
 
-async function authGet(endpoint, params = {}) {
+async function authGet(endpoint, params = {}, quotaCost = 1) {
   const token = requireToken()
   const url = new URL(`${BASE}/${endpoint}`)
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v))
@@ -60,10 +92,11 @@ async function authGet(endpoint, params = {}) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err?.error?.message ?? `HTTP ${res.status}`)
   }
+  trackQuota(quotaCost)
   return res.json()
 }
 
-async function authPost(endpoint, body) {
+async function authPost(endpoint, body, quotaCost = 50) {
   const token = requireToken()
   const url = new URL(`${BASE}/${endpoint}`)
   const res = await fetch(url, {
@@ -78,10 +111,11 @@ async function authPost(endpoint, body) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err?.error?.message ?? `HTTP ${res.status}`)
   }
+  trackQuota(quotaCost)
   return res.json()
 }
 
-async function authDelete(endpoint, params = {}) {
+async function authDelete(endpoint, params = {}, quotaCost = 50) {
   const token = requireToken()
   const url = new URL(`${BASE}/${endpoint}`)
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v))
@@ -89,7 +123,7 @@ async function authDelete(endpoint, params = {}) {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (res.status === 204) return null
+  if (res.status === 204) { trackQuota(quotaCost); return null }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err?.error?.message ?? `HTTP ${res.status}`)

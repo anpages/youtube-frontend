@@ -1,4 +1,5 @@
 import { isAuthenticated, getUserInfo, signIn, signOut } from '../auth.js'
+import { getQuotaUsage } from '../api.js'
 
 const NAV_LINKS = [
   { href: '#/recommended',   label: 'Recomendados',  path: '/recommended'   },
@@ -9,6 +10,17 @@ const NAV_LINKS = [
 export function renderHeader(searchQuery = '', currentPath = '/') {
   const user = getUserInfo()
   const authed = isAuthenticated()
+
+  const { used, limit } = getQuotaUsage()
+  const quotaPct = used / limit
+  const quotaColor = quotaPct >= 0.8 ? '#ef4444' : quotaPct >= 0.5 ? '#f59e0b' : '#22c55e'
+  const quotaBadge = authed ? `
+    <span id="quota-badge" title="Quota API YouTube hoy (se renueva a medianoche hora del Pacífico)"
+      style="font-size:11px;color:${quotaColor};white-space:nowrap;cursor:default"
+      class="shrink-0 hidden sm:inline">
+      ${used.toLocaleString()} / ${limit.toLocaleString()}
+    </span>
+  ` : ''
 
   const authSection = authed
     ? `
@@ -65,6 +77,7 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
             Buscar
           </button>
         </form>
+        ${quotaBadge}
         ${authSection}
       </nav>
     </div>
@@ -113,15 +126,24 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
   }
 }
 
-// Re-render header when auth state changes
-document.addEventListener('auth-changed', () => {
+function getCurrentHeaderArgs() {
   const hash = window.location.hash || '#/'
   const withoutHash = hash.slice(1)
   const [pathPart, queryStr] = withoutHash.split('?')
   const params = new URLSearchParams(queryStr ?? '')
   const path = pathPart || '/'
-  const searchQuery = path.startsWith('/search') ? (params.get('q') ?? '') : ''
-  renderHeader(searchQuery, path)
+  return [path.startsWith('/search') ? (params.get('q') ?? '') : '', path]
+}
+
+// Re-render header when auth state or quota changes
+document.addEventListener('auth-changed', () => renderHeader(...getCurrentHeaderArgs()))
+document.addEventListener('quota-updated', () => {
+  const badge = document.getElementById('quota-badge')
+  if (!badge) return
+  const { used, limit } = getQuotaUsage()
+  const pct = used / limit
+  badge.style.color = pct >= 0.8 ? '#ef4444' : pct >= 0.5 ? '#f59e0b' : '#22c55e'
+  badge.textContent = `${used.toLocaleString()} / ${limit.toLocaleString()}`
 })
 
 function initials(name) {
