@@ -85,7 +85,7 @@ function renderVideoGrid() {
   const videos = getVisibleVideos()
 
   if (videos.length === 0) {
-    grid.innerHTML = `<p class="col-span-2 text-neutral-500 text-sm py-8">No hay vídeos recientes.</p>`
+    grid.innerHTML = `<p class="col-span-3 text-neutral-500 text-sm py-8">No hay vídeos recientes.</p>`
     return
   }
 
@@ -209,11 +209,11 @@ export async function renderSubscriptions() {
     // Render layout with sidebar immediately
     app.innerHTML = `
       <div class="flex min-h-screen">
-        <aside class="w-44 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto sticky top-0 max-h-screen">
+        <aside class="w-56 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto sticky top-0 max-h-screen">
           <div id="sub-sidebar" class="space-y-0.5"></div>
         </aside>
         <div class="flex-1 min-w-0 px-4 py-4">
-          <div id="video-grid" class="grid grid-cols-2 gap-3"></div>
+          <div id="video-grid" class="grid grid-cols-3 gap-3"></div>
           <div id="sub-sentinel"></div>
         </div>
       </div>
