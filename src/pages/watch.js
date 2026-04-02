@@ -138,12 +138,12 @@ export async function renderWatch(videoId) {
     if (!durationSecs) return
     progressInterval = setInterval(() => {
       const elapsed = (Date.now() - watchStart) / 1000
-      saveProgress(videoId, Math.min(elapsed, durationSecs), durationSecs)
+      saveProgress(videoId, Math.min(startAt + elapsed, durationSecs), durationSecs)
     }, 5000)
     window.addEventListener('hashchange', () => {
       clearInterval(progressInterval)
       const elapsed = (Date.now() - watchStart) / 1000
-      saveProgress(videoId, Math.min(elapsed, durationSecs), durationSecs)
+      saveProgress(videoId, Math.min(startAt + elapsed, durationSecs), durationSecs)
     }, { once: true })
   }
 
