@@ -3,6 +3,7 @@ import { getMySubscriptions, getChannelsDetails, getPlaylistVideos } from '../ap
 import { getHistory } from '../history-store.js'
 import { videoCard } from '../components/videoCard.js'
 import { timeAgo, escapeHtml } from '../utils.js'
+import { getAllProgress } from '../progress-store.js'
 
 const BATCH_SIZE = 12      // channels per load
 const VIDEOS_PER_CH = 3    // videos per channel
@@ -142,6 +143,7 @@ function renderVideoGrid(reset = false) {
   const newVideos = videos.slice(_renderedCount)
   if (newVideos.length === 0) return
 
+  const allProgress = getAllProgress()
   const fragment = document.createDocumentFragment()
   newVideos.forEach(v => {
     const div = document.createElement('div')
@@ -151,6 +153,7 @@ function renderVideoGrid(reset = false) {
       channelTitle: v.channelTitle,
       thumbnail: v.thumbnail,
       publishedAt: timeAgo(v.publishedAt),
+      progress: allProgress[v.id] ? { seconds: allProgress[v.id].seconds, duration: allProgress[v.id].duration } : null,
     })
     fragment.appendChild(div.firstElementChild)
   })
@@ -223,10 +226,18 @@ function mapItems(ch, items) {
 function appendToGrid(videos) {
   const grid = document.getElementById('video-grid')
   if (!grid) return
+  const allProgress = getAllProgress()
   const fragment = document.createDocumentFragment()
   videos.forEach(v => {
     const div = document.createElement('div')
-    div.innerHTML = videoCard({ id: v.id, title: v.title, channelTitle: v.channelTitle, thumbnail: v.thumbnail, publishedAt: timeAgo(v.publishedAt) })
+    div.innerHTML = videoCard({
+      id: v.id,
+      title: v.title,
+      channelTitle: v.channelTitle,
+      thumbnail: v.thumbnail,
+      publishedAt: timeAgo(v.publishedAt),
+      progress: allProgress[v.id] ? { seconds: allProgress[v.id].seconds, duration: allProgress[v.id].duration } : null,
+    })
     fragment.appendChild(div.firstElementChild)
   })
   grid.appendChild(fragment)

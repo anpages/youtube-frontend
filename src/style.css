@@ -41,6 +41,12 @@ html.light .hover\:text-neutral-200:hover { color: #1e293b; }
 html.light .hover\:text-neutral-100:hover { color: #0f172a; }
 html.light .group:hover .group-hover\:text-neutral-100 { color: #0f172a; }
 
+/* Ensure YT iframe fills its container in both normal and theater mode */
+#player-inner iframe {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 @layer utilities {
   .line-clamp-2 {
     display: -webkit-box;

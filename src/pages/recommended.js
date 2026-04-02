@@ -3,6 +3,7 @@ import { getHistory } from '../history-store.js'
 import { getChannelsDetails, getPlaylistVideos, getMySubscriptions, getTrending } from '../api.js'
 import { videoCard } from '../components/videoCard.js'
 import { timeAgo, escapeHtml } from '../utils.js'
+import { getAllProgress } from '../progress-store.js'
 
 const BATCH_SIZE = 15
 const VIDEOS_PER_CH = 8
@@ -70,10 +71,18 @@ function renderGrid() {
   if (!grid) return
   const newVideos = _allVideos.slice(_renderedCount)
   if (newVideos.length === 0) return
+  const allProgress = getAllProgress()
   const fragment = document.createDocumentFragment()
   newVideos.forEach(v => {
     const div = document.createElement('div')
-    div.innerHTML = videoCard({ id: v.id, title: v.title, channelTitle: v.channelTitle, thumbnail: v.thumbnail, publishedAt: timeAgo(v.publishedAt) })
+    div.innerHTML = videoCard({
+      id: v.id,
+      title: v.title,
+      channelTitle: v.channelTitle,
+      thumbnail: v.thumbnail,
+      publishedAt: timeAgo(v.publishedAt),
+      progress: allProgress[v.id] ? { seconds: allProgress[v.id].seconds, duration: allProgress[v.id].duration } : null,
+    })
     fragment.appendChild(div.firstElementChild)
   })
   grid.appendChild(fragment)

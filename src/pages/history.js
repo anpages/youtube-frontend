@@ -2,6 +2,7 @@ import { isAuthenticated, signIn } from '../auth.js'
 import { getHistory, clearHistory } from '../history-store.js'
 import { videoCard } from '../components/videoCard.js'
 import { timeAgo, escapeHtml } from '../utils.js'
+import { getAllProgress } from '../progress-store.js'
 
 export function renderHistory() {
   const app = document.getElementById('app')
@@ -21,6 +22,7 @@ export function renderHistory() {
 
   function render() {
     const history = getHistory()
+    const allProgress = getAllProgress()
 
     app.innerHTML = `
       <div class="max-w-7xl mx-auto px-4 pt-6">
@@ -41,6 +43,7 @@ export function renderHistory() {
                 channelTitle: v.channelTitle,
                 thumbnail: v.thumbnail,
                 publishedAt: timeAgo(v.watchedAt),
+                progress: allProgress[v.id] ? { seconds: allProgress[v.id].seconds, duration: allProgress[v.id].duration } : null,
               })).join('')}
             </div>`
         }
