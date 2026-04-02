@@ -84,14 +84,14 @@ export function renderHeader(currentPath = '/') {
     subnav.className = authed ? 'sticky top-0 z-50 bg-neutral-950/95 backdrop-blur-sm border-b border-neutral-800' : ''
     subnav.innerHTML = authed ? `
       <div class="max-w-7xl mx-auto px-4 flex items-center gap-1">
-        ${currentPath === '/watch' && window.matchMedia('(pointer: coarse)').matches ? `
+        ${currentPath === '/watch' ? `
           <button id="subnav-back-btn" class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-neutral-200 transition-colors">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
             </svg>
             Volver
           </button>
-        ` : currentPath !== '/watch' ? `
+        ` : `
           ${NAV_LINKS.map(({ href, label, path }) => `
             <a href="${href}" class="px-3 py-2 text-sm font-medium transition-colors ${currentPath === path ? 'text-neutral-100 border-b-2 border-red-500' : 'text-neutral-400 hover:text-neutral-200'}">
               ${label}
@@ -104,7 +104,7 @@ export function renderHeader(currentPath = '/') {
             </svg>
             Actualizar
           </button>
-        ` : ''}
+        `}
       </div>
     ` : ''
   }
