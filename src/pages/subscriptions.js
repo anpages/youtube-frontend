@@ -213,7 +213,7 @@ export async function renderSubscriptions() {
           <div id="sub-sidebar" class="space-y-0.5"></div>
         </aside>
         <div class="flex-1 min-w-0 px-4 py-4">
-          <div id="video-grid" class="grid grid-cols-3 gap-3"></div>
+          <div id="video-grid" class="grid grid-cols-3 gap-x-4 gap-y-6"></div>
           <div id="sub-sentinel"></div>
         </div>
       </div>
