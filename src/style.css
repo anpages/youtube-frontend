@@ -6,10 +6,32 @@
   html {
     color-scheme: dark;
   }
+  html.light {
+    color-scheme: light;
+  }
   * {
     -webkit-tap-highlight-color: transparent;
   }
 }
+
+/* ── Light mode overrides ───────────────────────────────────────────────────── */
+html.light body                    { background-color: #f8fafc; color: #0f172a; }
+html.light .bg-neutral-950         { background-color: #f8fafc; }
+html.light .bg-neutral-900         { background-color: #f1f5f9; }
+html.light .bg-neutral-800         { background-color: #e2e8f0; }
+html.light .bg-neutral-700         { background-color: #cbd5e1; }
+html.light .bg-neutral-600         { background-color: #94a3b8; }
+html.light .text-neutral-100       { color: #0f172a; }
+html.light .text-neutral-200       { color: #1e293b; }
+html.light .text-neutral-300       { color: #334155; }
+html.light .text-neutral-400       { color: #475569; }
+html.light .text-neutral-500       { color: #64748b; }
+html.light .text-neutral-600       { color: #94a3b8; }
+html.light .border-neutral-800     { border-color: #e2e8f0; }
+html.light .border-neutral-700     { border-color: #cbd5e1; }
+html.light .placeholder-neutral-500::placeholder { color: #94a3b8; }
+/* Subnav backdrop (Tailwind generates bg-neutral-950/95 as rgba) */
+html.light #subnav                 { background-color: rgba(248,250,252,0.95) !important; }
 
 @layer utilities {
   .line-clamp-2 {
