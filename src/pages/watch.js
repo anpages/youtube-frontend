@@ -91,6 +91,8 @@ export async function renderWatch(videoId) {
     playerWrap.classList.remove('relative', 'rounded-lg')
     playerInner.classList.add('flex-1', 'min-h-0')
     playerInner.classList.remove('aspect-video')
+    theaterNav.classList.remove('hidden')
+    theaterNav.classList.add('flex')
     document.getElementById('header').classList.add('hidden')
     theaterBtn.classList.add('hidden')
   }
@@ -115,57 +117,6 @@ export async function renderWatch(videoId) {
   })
 
   enterTheater()
-
-  // Auto-hide subnav after 3s; reveal on mouse near top or swipe down from top
-  const subnav = document.getElementById('subnav')
-  if (subnav) {
-    subnav.style.transition = 'transform 0.3s ease, opacity 0.3s ease'
-    let hideTimer = null
-
-    function showSubnav() {
-      subnav.style.transform = 'translateY(0)'
-      subnav.style.opacity = '1'
-      subnav.style.pointerEvents = ''
-      clearTimeout(hideTimer)
-      hideTimer = setTimeout(hideSubnav, 3000)
-    }
-    function hideSubnav() {
-      subnav.style.transform = 'translateY(-100%)'
-      subnav.style.opacity = '0'
-      subnav.style.pointerEvents = 'none'
-    }
-
-    hideTimer = setTimeout(hideSubnav, 3000)
-
-    function onMouseMove(e) {
-      if (!document.getElementById('subnav')) { document.removeEventListener('mousemove', onMouseMove); return }
-      if (e.clientY < 60) showSubnav()
-    }
-    document.addEventListener('mousemove', onMouseMove)
-
-    let touchStartY = null
-    function onTouchStart(e) {
-      if (!document.getElementById('subnav')) { document.removeEventListener('touchstart', onTouchStart); return }
-      if (e.touches[0].clientY < 60) touchStartY = e.touches[0].clientY
-    }
-    function onTouchMove(e) {
-      if (!document.getElementById('subnav')) { document.removeEventListener('touchmove', onTouchMove); return }
-      if (touchStartY !== null && e.touches[0].clientY > touchStartY + 15) {
-        showSubnav()
-        touchStartY = null
-      }
-    }
-    document.addEventListener('touchstart', onTouchStart, { passive: true })
-    document.addEventListener('touchmove', onTouchMove, { passive: true })
-
-    window.addEventListener('hashchange', () => {
-      clearTimeout(hideTimer)
-      subnav.style.cssText = ''
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('touchstart', onTouchStart)
-      document.removeEventListener('touchmove', onTouchMove)
-    }, { once: true })
-  }
 
   document.addEventListener('keydown', function onKey(e) {
     if (e.key === 'Escape' && theater) exitTheater()
