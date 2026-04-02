@@ -85,26 +85,26 @@ export function renderHeader(currentPath = '/') {
     subnav.innerHTML = authed ? `
       <div class="max-w-7xl mx-auto px-4 flex items-center gap-1">
         ${currentPath === '/watch' ? `
-          <button id="subnav-back-btn" class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-neutral-200 transition-colors mr-2">
+          <button id="subnav-back-btn" class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-neutral-200 transition-colors">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
             </svg>
             Volver
           </button>
-          <div class="w-px h-4 bg-neutral-700 mr-1"></div>
-        ` : ''}
-        ${NAV_LINKS.map(({ href, label, path }) => `
-          <a href="${href}" class="px-3 py-2 text-sm font-medium transition-colors ${currentPath === path ? 'text-neutral-100 border-b-2 border-red-500' : 'text-neutral-400 hover:text-neutral-200'}">
-            ${label}
-          </a>
-        `).join('')}
-        <div class="ml-auto"></div>
-        <button id="refresh-btn" class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-neutral-200 transition-colors">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
-          Actualizar
-        </button>
+        ` : `
+          ${NAV_LINKS.map(({ href, label, path }) => `
+            <a href="${href}" class="px-3 py-2 text-sm font-medium transition-colors ${currentPath === path ? 'text-neutral-100 border-b-2 border-red-500' : 'text-neutral-400 hover:text-neutral-200'}">
+              ${label}
+            </a>
+          `).join('')}
+          <div class="ml-auto"></div>
+          <button id="refresh-btn" class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-neutral-200 transition-colors">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Actualizar
+          </button>
+        `}
       </div>
     ` : ''
   }
