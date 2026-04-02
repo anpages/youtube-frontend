@@ -89,6 +89,7 @@ function initPullToRefresh() {
       ptr.style.height       = MAX_H + 'px'
       inner.style.opacity    = '1'
       svg.style.animation    = 'ptr-spin 0.7s linear infinite'
+      try { sessionStorage.setItem('ptr_refresh', '1') } catch {}
       setTimeout(() => window.location.reload(), 700)
     } else {
       ptr.style.transition   = 'height 0.3s ease'

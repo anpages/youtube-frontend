@@ -1,13 +1,13 @@
 import { isAuthenticated, signIn } from '../auth.js'
 import { getHistory } from '../history-store.js'
-import { getChannelsDetails, getPlaylistVideos, getMySubscriptions, searchVideos } from '../api.js'
+import { getChannelsDetails, getPlaylistVideos, getMySubscriptions, getTrending } from '../api.js'
 import { videoCard } from '../components/videoCard.js'
 import { timeAgo, escapeHtml } from '../utils.js'
 
 const BATCH_SIZE = 15
 const VIDEOS_PER_CH = 8
-const DISCOVERY_PER_QUERY = 15
-const DISCOVERY_QUERIES = 5
+const CACHE_KEY = 'yt_rec_v1'
+const CACHE_TTL = 4 * 60 * 60 * 1000 // 4 hours
 
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -17,15 +17,41 @@ function shuffle(arr) {
   return arr
 }
 
-// Module-level cache
+// Module-level cache (back-navigation)
 let _channels = []
 let _allVideos = []
-let _discoveryVideos = []
 let _loadedUpTo = 0
 let _renderedCount = 0
 let _loading = false
 let _observer = null
 let _watchedIds = new Set()
+
+// localStorage cache (survives page reload, avoids quota waste)
+function saveToStorage() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ts: Date.now(),
+      channels: _channels,
+      videos: _allVideos,
+    }))
+  } catch {}
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return false
+    const { ts, channels, videos } = JSON.parse(raw)
+    if (Date.now() - ts > CACHE_TTL) return false
+    _channels = channels
+    _allVideos = videos
+    return true
+  } catch { return false }
+}
+
+function bustStorage() {
+  try { localStorage.removeItem(CACHE_KEY) } catch {}
+}
 
 function buildLayout() {
   return `
@@ -90,13 +116,7 @@ async function loadNextBatch() {
       }
     }
   }
-  // On the last batch, inject discovery videos
-  if (_loadedUpTo >= _channels.length && _discoveryVideos.length > 0) {
-    for (const v of _discoveryVideos) {
-      if (!seen.has(v.id)) { seen.add(v.id); _allVideos.push(v) }
-    }
-    _discoveryVideos = []
-  }
+  saveToStorage()
   renderGrid()
   updateSentinel()
   _loading = false
@@ -112,31 +132,23 @@ function setupObserver() {
   _observer.observe(sentinel)
 }
 
-// Fetch videos from outside subscribed channels via keyword search
-async function fetchDiscovery(topChannelNames, watchedIds) {
-  const queries = shuffle([...topChannelNames]).slice(0, DISCOVERY_QUERIES)
-  const results = await Promise.allSettled(
-    queries.map(q => searchVideos(q, DISCOVERY_PER_QUERY))
-  )
-  const seen = new Set()
-  const videos = []
-  for (const r of results) {
-    if (r.status !== 'fulfilled') continue
-    for (const item of r.value.items ?? []) {
-      const id = item.id?.videoId
-      if (!id || watchedIds.has(id) || seen.has(id)) continue
-      seen.add(id)
-      videos.push({
-        id,
+// Discovery via trending (1 quota unit, vs 100 per search call)
+async function fetchTrendingDiscovery(watchedIds) {
+  try {
+    const region = (navigator.language || 'en').split('-')[1]?.toUpperCase() || 'US'
+    const data = await getTrending(region, 30)
+    const seen = new Set()
+    return (data.items ?? [])
+      .filter(item => item.id && !watchedIds.has(item.id) && !seen.has(item.id) && seen.add(item.id))
+      .map(item => ({
+        id: item.id,
         title: item.snippet.title,
         thumbnail: item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? '',
         publishedAt: item.snippet.publishedAt ?? '',
         channelTitle: item.snippet.channelTitle,
         channelId: item.snippet.channelId,
-      })
-    }
-  }
-  return videos
+      }))
+  } catch { return [] }
 }
 
 export async function renderRecommended() {
@@ -155,10 +167,31 @@ export async function renderRecommended() {
     return
   }
 
-  // Restore from cache
+  // Check pull-to-refresh bust flag
+  const forceFresh = sessionStorage.getItem('ptr_refresh') === '1'
+  if (forceFresh) {
+    sessionStorage.removeItem('ptr_refresh')
+    bustStorage()
+    _channels = []
+    _allVideos = []
+  }
+
+  // Restore from module-level cache (back navigation)
   if (_channels.length > 0) {
     app.innerHTML = buildLayout()
     _renderedCount = 0
+    renderGrid()
+    updateSentinel()
+    setupObserver()
+    return
+  }
+
+  // Restore from localStorage cache (page reload within TTL)
+  if (!forceFresh && loadFromStorage() && _channels.length > 0) {
+    _loadedUpTo = _channels.length
+    _renderedCount = 0
+    _watchedIds = new Set(getHistory().map(v => v.id))
+    app.innerHTML = buildLayout()
     renderGrid()
     updateSentinel()
     setupObserver()
@@ -190,24 +223,21 @@ export async function renderRecommended() {
   try {
     _watchedIds = new Set(history.map(v => v.id))
     _allVideos = []
-    _discoveryVideos = []
     _loadedUpTo = 0
     _renderedCount = 0
 
-    // Top channel names for discovery search queries
+    // Channels from watch history
     const seenChannels = new Set()
     const historyChannelIds = []
-    const topChannelNames = []
     for (const v of history.slice(0, 100)) {
       if (v.channelId && !seenChannels.has(v.channelId)) {
         seenChannels.add(v.channelId)
         historyChannelIds.push(v.channelId)
-        if (v.channelTitle) topChannelNames.push(v.channelTitle)
         if (historyChannelIds.length >= 30) break
       }
     }
 
-    // Subscription channels not already in watch history
+    // Subscription channels not in watch history
     const subChannelIds = []
     try {
       let pageToken = null
@@ -224,9 +254,9 @@ export async function renderRecommended() {
       } while (pageToken && subChannelIds.length < 120)
     } catch {}
 
-    // Fetch channel details + discovery in parallel
+    // Channel details + trending discovery in parallel (trending = 1 quota unit)
     const allChannelIds = [...historyChannelIds, ...subChannelIds]
-    const [channelResults] = await Promise.all([
+    const [channelResults, trendingVideos] = await Promise.all([
       (async () => {
         const map = new Map()
         for (let i = 0; i < allChannelIds.length; i += 50) {
@@ -238,14 +268,20 @@ export async function renderRecommended() {
         }
         return map
       })(),
-      fetchDiscovery(topChannelNames, _watchedIds).then(videos => { _discoveryVideos = videos }),
+      fetchTrendingDiscovery(_watchedIds),
     ])
 
     const historyChannels = historyChannelIds.map(id => channelResults.get(id)).filter(Boolean)
     const subChannels     = subChannelIds.map(id => channelResults.get(id)).filter(Boolean)
     _channels = [...shuffle(historyChannels), ...shuffle(subChannels)]
 
-    if (_channels.length === 0 && _discoveryVideos.length === 0) {
+    // Inject trending discovery videos up front so they appear mixed in
+    if (trendingVideos.length > 0) {
+      const seen = new Set()
+      _allVideos = shuffle(trendingVideos).filter(v => !seen.has(v.id) && seen.add(v.id))
+    }
+
+    if (_channels.length === 0 && _allVideos.length === 0) {
       app.innerHTML = `
         <div class="max-w-7xl mx-auto px-4 pt-6">
           <h1 class="text-xl font-bold mb-4">Recomendados</h1>
@@ -256,6 +292,8 @@ export async function renderRecommended() {
     }
 
     app.innerHTML = buildLayout()
+    // Render any trending videos already in _allVideos before loading channel batch
+    renderGrid()
     await loadNextBatch()
     setupObserver()
 
