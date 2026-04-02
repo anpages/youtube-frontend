@@ -64,7 +64,11 @@ export function signIn() {
           access_token: response.access_token,
           expiry: Date.now() + response.expires_in * 1000,
         }
-        _userInfo = await _fetchUserInfo(response.access_token)
+        try {
+          _userInfo = await _fetchUserInfo(response.access_token)
+        } catch (e) {
+          console.warn('Could not fetch user info:', e)
+        }
         _persist()
         document.dispatchEvent(new CustomEvent('auth-changed'))
       },
