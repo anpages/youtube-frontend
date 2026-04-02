@@ -14,6 +14,12 @@ let _renderedCount = 0
 let _loading = false
 let _observer = null
 
+// Channel-specific view state
+let _chVideos = []
+let _chNextPageToken = null
+let _chRenderedCount = 0
+let _chLoading = false
+
 async function fetchAllSubscriptions() {
   const items = []
   let pageToken = null
@@ -72,9 +78,16 @@ function renderSidebar() {
 
   sidebar.querySelectorAll('.sidebar-ch').forEach(btn => {
     btn.addEventListener('click', () => {
-      _selectedChannelId = btn.dataset.id || null
+      const id = btn.dataset.id || null
+      _selectedChannelId = id
       renderSidebar()
-      renderVideoGrid(true)
+      if (id) {
+        startChannelView(id)
+      } else {
+        renderVideoGrid(true)
+        updateSentinel()
+        setupInfiniteScroll()
+      }
     })
   })
 }
@@ -162,6 +175,77 @@ async function loadNextBatch() {
   renderVideoGrid()
   updateSentinel()
   _loading = false
+}
+
+function mapItems(ch, items) {
+  return items.map(item => ({
+    id: item.snippet.resourceId?.videoId ?? item.contentDetails?.videoId ?? '',
+    title: item.snippet.title,
+    thumbnail: item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? '',
+    publishedAt: item.contentDetails?.videoPublishedAt ?? item.snippet.publishedAt ?? '',
+    channelId: ch.id,
+    channelTitle: ch.title,
+  })).filter(v => v.id)
+}
+
+function appendToGrid(videos) {
+  const grid = document.getElementById('video-grid')
+  if (!grid) return
+  const fragment = document.createDocumentFragment()
+  videos.forEach(v => {
+    const div = document.createElement('div')
+    div.innerHTML = videoCard({ id: v.id, title: v.title, channelTitle: v.channelTitle, thumbnail: v.thumbnail, publishedAt: timeAgo(v.publishedAt) })
+    fragment.appendChild(div.firstElementChild)
+  })
+  grid.appendChild(fragment)
+}
+
+async function startChannelView(channelId) {
+  _chVideos = []
+  _chNextPageToken = null
+  _chRenderedCount = 0
+  _chLoading = false
+  _observer?.disconnect()
+
+  const grid = document.getElementById('video-grid')
+  if (grid) grid.innerHTML = ''
+  updateSentinel()
+
+  const ch = _channels.find(c => c.id === channelId)
+  if (!ch?.uploadsPlaylistId) return
+
+  await loadChannelPage(ch)
+  setupChannelScroll(ch)
+}
+
+async function loadChannelPage(ch) {
+  if (_chLoading) return
+  _chLoading = true
+
+  const data = await getPlaylistVideos(ch.uploadsPlaylistId, 20, _chNextPageToken)
+  const newVideos = mapItems(ch, data.items ?? [])
+  _chVideos.push(...newVideos)
+  _chNextPageToken = data.nextPageToken ?? null
+
+  appendToGrid(newVideos)
+  _chRenderedCount = _chVideos.length
+
+  const sentinel = document.getElementById('sub-sentinel')
+  if (sentinel) sentinel.innerHTML = _chNextPageToken
+    ? `<div class="flex justify-center py-6"><svg class="animate-spin w-6 h-6 text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg></div>`
+    : ''
+
+  _chLoading = false
+}
+
+function setupChannelScroll(ch) {
+  _observer?.disconnect()
+  const sentinel = document.getElementById('sub-sentinel')
+  if (!sentinel || !_chNextPageToken) return
+  _observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) loadChannelPage(ch)
+  }, { rootMargin: '200px' })
+  _observer.observe(sentinel)
 }
 
 function setupInfiniteScroll() {

@@ -153,10 +153,8 @@ export function getChannelsDetails(channelIds) {
 }
 
 /** Get latest videos from an uploads playlist (public) */
-export function getPlaylistVideos(playlistId, maxResults = 5) {
-  return get('playlistItems', {
-    part: 'snippet,contentDetails',
-    playlistId,
-    maxResults,
-  })
+export function getPlaylistVideos(playlistId, maxResults = 5, pageToken = null) {
+  const params = { part: 'snippet,contentDetails', playlistId, maxResults }
+  if (pageToken) params.pageToken = pageToken
+  return get('playlistItems', params)
 }
