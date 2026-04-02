@@ -66,24 +66,22 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
         </form>
         ${authSection}
       </nav>
-      ${authed ? `
-        <div class="sticky top-0 z-50 bg-neutral-950/95 backdrop-blur-sm border-b border-neutral-800">
-          <div class="max-w-7xl mx-auto px-4 flex gap-1">
-            ${NAV_LINKS.map(({ href, label, path }) => `
-              <a
-                href="${href}"
-                class="px-3 py-2 text-sm font-medium transition-colors ${currentPath === path ? 'text-white border-b-2 border-red-500' : 'text-neutral-400 hover:text-neutral-200'}"
-              >
-                ${label}
-              </a>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
     </div>
   `
 
-  document.getElementById('app').style.paddingTop = ''
+  const subnav = document.getElementById('subnav')
+  if (subnav) {
+    subnav.className = authed ? 'sticky top-0 z-50 bg-neutral-950/95 backdrop-blur-sm border-b border-neutral-800' : ''
+    subnav.innerHTML = authed ? `
+      <div class="max-w-7xl mx-auto px-4 flex gap-1">
+        ${NAV_LINKS.map(({ href, label, path }) => `
+          <a href="${href}" class="px-3 py-2 text-sm font-medium transition-colors ${currentPath === path ? 'text-white border-b-2 border-red-500' : 'text-neutral-400 hover:text-neutral-200'}">
+            ${label}
+          </a>
+        `).join('')}
+      </div>
+    ` : ''
+  }
 
   document.getElementById('search-form').addEventListener('submit', e => {
     e.preventDefault()
