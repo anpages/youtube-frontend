@@ -292,10 +292,20 @@ export async function renderSubscriptions() {
   if (_channels.length > 0) {
     app.innerHTML = buildLayout()
     renderSidebar()
-    _renderedCount = 0
-    renderVideoGrid()
-    updateSentinel()
-    setupInfiniteScroll()
+    if (_selectedChannelId) {
+      appendToGrid(_chVideos)
+      const sentinel = document.getElementById('sub-sentinel')
+      if (sentinel) sentinel.innerHTML = _chNextPageToken
+        ? `<div class="flex justify-center py-6"><svg class="animate-spin w-6 h-6 text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg></div>`
+        : ''
+      const ch = _channels.find(c => c.id === _selectedChannelId)
+      if (ch) setupChannelScroll(ch)
+    } else {
+      _renderedCount = 0
+      renderVideoGrid()
+      updateSentinel()
+      setupInfiniteScroll()
+    }
     return
   }
 
