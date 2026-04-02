@@ -1,5 +1,6 @@
 import { isAuthenticated, signIn } from '../auth.js'
 import { getMySubscriptions, getChannelsDetails, getPlaylistVideos } from '../api.js'
+import { getHistory } from '../history-store.js'
 import { videoCard } from '../components/videoCard.js'
 import { timeAgo, escapeHtml } from '../utils.js'
 
@@ -341,7 +342,11 @@ export async function renderSubscriptions() {
 
     const channelIds = subs.map(s => s.snippet.resourceId.channelId)
     const channelMap = await fetchChannelMap(channelIds)
-    _channels = [...channelMap.values()]
+    const watchCount = new Map()
+    for (const v of getHistory()) {
+      if (v.channelId) watchCount.set(v.channelId, (watchCount.get(v.channelId) ?? 0) + 1)
+    }
+    _channels = [...channelMap.values()].sort((a, b) => (watchCount.get(b.id) ?? 0) - (watchCount.get(a.id) ?? 0))
 
     app.innerHTML = buildLayout()
 
