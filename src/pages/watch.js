@@ -1,25 +1,8 @@
 import { getVideoDetails, getSubscriptionStatus, subscribeToChannel, unsubscribeFromChannel } from '../api.js'
 import { isAuthenticated } from '../auth.js'
 import { addToHistory } from '../history-store.js'
-import { parseDuration, formatCount, timeAgo, escapeHtml } from '../utils.js'
+import { parseDuration, parseDurationSecs, formatCount, timeAgo, escapeHtml } from '../utils.js'
 import { saveProgress } from '../progress-store.js'
-
-let _ytApiPromise = null
-
-function loadYtApi() {
-  if (_ytApiPromise) return _ytApiPromise
-  _ytApiPromise = new Promise(resolve => {
-    if (window.YT && window.YT.Player) {
-      resolve()
-      return
-    }
-    const tag = document.createElement('script')
-    tag.src = 'https://www.youtube.com/iframe_api'
-    document.head.appendChild(tag)
-    window.onYouTubeIframeAPIReady = () => resolve()
-  })
-  return _ytApiPromise
-}
 
 export async function renderWatch(videoId) {
   const app = document.getElementById('app')
@@ -46,7 +29,14 @@ export async function renderWatch(videoId) {
 
         <!-- Video -->
         <div id="player-inner" class="aspect-video">
-          <div id="yt-player" class="w-full h-full"></div>
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0&modestbranding=1&autoplay=1"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+            loading="lazy"
+            class="w-full h-full border-0"
+            title="Video player"
+          ></iframe>
         </div>
 
         <!-- Theater toggle (normal mode) -->
@@ -122,46 +112,22 @@ export async function renderWatch(videoId) {
     if (!document.getElementById('player-wrap')) document.removeEventListener('keydown', onKey)
   })
 
-  // YT Player setup
-  let ytPlayer = null
+  // Time-based progress tracking — starts once we know the video duration
   let progressInterval = null
+  const watchStart = Date.now()
 
-  function onPlayerReady() {
+  function startProgressTracking(durationSecs) {
+    if (!durationSecs) return
     progressInterval = setInterval(() => {
-      if (ytPlayer) {
-        saveProgress(videoId, ytPlayer.getCurrentTime(), ytPlayer.getDuration())
-      }
+      const elapsed = (Date.now() - watchStart) / 1000
+      saveProgress(videoId, Math.min(elapsed, durationSecs), durationSecs)
     }, 5000)
-  }
-
-  function cleanupPlayer() {
-    if (progressInterval) {
+    window.addEventListener('hashchange', () => {
       clearInterval(progressInterval)
-      progressInterval = null
-    }
-    if (ytPlayer) {
-      try {
-        saveProgress(videoId, ytPlayer.getCurrentTime(), ytPlayer.getDuration())
-      } catch {}
-    }
+      const elapsed = (Date.now() - watchStart) / 1000
+      saveProgress(videoId, Math.min(elapsed, durationSecs), durationSecs)
+    }, { once: true })
   }
-
-  window.addEventListener('hashchange', function onHashChange() {
-    cleanupPlayer()
-    window.removeEventListener('hashchange', onHashChange)
-  }, { once: true })
-
-  try {
-    await loadYtApi()
-    ytPlayer = new YT.Player('yt-player', {
-      host: 'https://www.youtube-nocookie.com',
-      videoId,
-      width: '100%',
-      height: '100%',
-      playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
-      events: { onReady: onPlayerReady },
-    })
-  } catch {}
 
   try {
     const data = await getVideoDetails(videoId)
@@ -181,6 +147,7 @@ export async function renderWatch(videoId) {
 
     const channelId = snippet.channelId
     const duration = parseDuration(contentDetails?.duration)
+    startProgressTracking(parseDurationSecs(contentDetails?.duration))
     const views = formatCount(statistics?.viewCount)
     const likes = formatCount(statistics?.likeCount)
     const published = timeAgo(snippet.publishedAt)
