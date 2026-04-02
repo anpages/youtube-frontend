@@ -34,7 +34,7 @@ export function renderHistory() {
         </div>
         ${history.length === 0
           ? `<p class="text-neutral-500 text-sm py-8">Aún no has visto ningún vídeo en YTube.</p>`
-          : `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
+          : `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-8">
               ${history.map(v => videoCard({
                 id: v.id,
                 title: v.title,
