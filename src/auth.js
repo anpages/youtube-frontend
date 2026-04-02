@@ -3,6 +3,7 @@
 
 const SCOPES = 'https://www.googleapis.com/auth/youtube openid profile email'
 const STORAGE_KEY = 'yt_auth_v1'
+const SESSION_FLAG_KEY = 'yt_had_session'
 
 let _tokenClient = null
 let _silentClient = null
@@ -19,6 +20,8 @@ function _loadStored() {
       _token = { access_token: data.access_token, expiry: data.expiry }
       _userInfo = data.userInfo ?? null
     } else {
+      // Token expired — keep userInfo for optimistic UI while silent refresh runs
+      _userInfo = data.userInfo ?? null
       localStorage.removeItem(STORAGE_KEY)
     }
   } catch {}
@@ -38,6 +41,7 @@ function _persist() {
     expiry: _token.expiry,
     userInfo: _userInfo,
   }))
+  localStorage.setItem(SESSION_FLAG_KEY, '1')
 }
 
 function _scheduleRefresh(expiry) {
@@ -56,10 +60,20 @@ function _silentRefresh() {
       scope: SCOPES,
       prompt: '',
       callback: async (response) => {
-        if (response.error || !response.access_token) return // silently fail
+        if (response.error || !response.access_token) {
+          // Silent refresh failed — clear optimistic userInfo and fire event
+          if (!_token) {
+            _userInfo = null
+            document.dispatchEvent(new CustomEvent('auth-changed'))
+          }
+          return
+        }
         _token = {
           access_token: response.access_token,
           expiry: Date.now() + response.expires_in * 1000,
+        }
+        if (!_userInfo) {
+          try { _userInfo = await _fetchUserInfo(response.access_token) } catch {}
         }
         _persist()
         _scheduleRefresh(_token.expiry)
@@ -72,7 +86,22 @@ function _silentRefresh() {
 
 export function initAuth() {
   _loadStored()
-  if (_token) _scheduleRefresh(_token.expiry)
+  if (_token) {
+    _scheduleRefresh(_token.expiry)
+  } else if (localStorage.getItem(SESSION_FLAG_KEY)) {
+    // Token expired but user had a session — try silent refresh once GIS is ready
+    const tryRefresh = () => {
+      if (window.google?.accounts?.oauth2) {
+        _silentRefresh()
+      } else {
+        // GIS script not ready yet, wait for it
+        window.addEventListener('load', () => {
+          if (window.google?.accounts?.oauth2) _silentRefresh()
+        }, { once: true })
+      }
+    }
+    tryRefresh()
+  }
 }
 
 export function signIn() {
@@ -120,6 +149,7 @@ export function signOut() {
   _token = null
   _userInfo = null
   localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem(SESSION_FLAG_KEY)
   document.dispatchEvent(new CustomEvent('auth-changed'))
 }
 
