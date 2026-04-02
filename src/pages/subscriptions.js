@@ -292,8 +292,8 @@ function setupInfiniteScroll() {
 
 function buildLayout() {
   return `
-    <div class="flex min-h-screen">
-      <aside class="w-72 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto sticky top-0 max-h-screen">
+    <div class="flex">
+      <aside style="position:sticky;top:37px;height:calc(100vh - 37px)" class="w-72 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto">
         <div id="sub-sidebar" class="space-y-0.5"></div>
       </aside>
       <div class="flex-1 min-w-0 px-4 py-4">
