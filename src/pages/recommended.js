@@ -1,15 +1,18 @@
 import { isAuthenticated, signIn } from '../auth.js'
 import { getHistory } from '../history-store.js'
-import { getChannelsDetails, getPlaylistVideos, getMySubscriptions } from '../api.js'
+import { getChannelsDetails, getPlaylistVideos, getMySubscriptions, searchVideos } from '../api.js'
 import { videoCard } from '../components/videoCard.js'
 import { timeAgo, escapeHtml } from '../utils.js'
 
 const BATCH_SIZE = 15
-const VIDEOS_PER_CH = 10
+const VIDEOS_PER_CH = 8
+const DISCOVERY_PER_QUERY = 15
+const DISCOVERY_QUERIES = 5
 
 // Module-level cache
 let _channels = []
 let _allVideos = []
+let _discoveryVideos = []
 let _loadedUpTo = 0
 let _renderedCount = 0
 let _loading = false
@@ -71,8 +74,20 @@ async function loadNextBatch() {
       )
     )
   )
+  const seen = new Set(_allVideos.map(v => v.id))
   for (const r of results) {
-    if (r.status === 'fulfilled') _allVideos.push(...r.value)
+    if (r.status === 'fulfilled') {
+      for (const v of r.value) {
+        if (!seen.has(v.id)) { seen.add(v.id); _allVideos.push(v) }
+      }
+    }
+  }
+  // On the last batch, inject discovery videos
+  if (_loadedUpTo >= _channels.length && _discoveryVideos.length > 0) {
+    for (const v of _discoveryVideos) {
+      if (!seen.has(v.id)) { seen.add(v.id); _allVideos.push(v) }
+    }
+    _discoveryVideos = []
   }
   _allVideos.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
   renderGrid()
@@ -88,6 +103,33 @@ function setupObserver() {
     if (entries[0].isIntersecting) loadNextBatch()
   }, { rootMargin: '200px' })
   _observer.observe(sentinel)
+}
+
+// Fetch videos from outside subscribed channels via keyword search
+async function fetchDiscovery(topChannelNames, watchedIds) {
+  const queries = topChannelNames.slice(0, DISCOVERY_QUERIES)
+  const results = await Promise.allSettled(
+    queries.map(q => searchVideos(q, DISCOVERY_PER_QUERY))
+  )
+  const seen = new Set()
+  const videos = []
+  for (const r of results) {
+    if (r.status !== 'fulfilled') continue
+    for (const item of r.value.items ?? []) {
+      const id = item.id?.videoId
+      if (!id || watchedIds.has(id) || seen.has(id)) continue
+      seen.add(id)
+      videos.push({
+        id,
+        title: item.snippet.title,
+        thumbnail: item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? '',
+        publishedAt: item.snippet.publishedAt ?? '',
+        channelTitle: item.snippet.channelTitle,
+        channelId: item.snippet.channelId,
+      })
+    }
+  }
+  return videos
 }
 
 export async function renderRecommended() {
@@ -141,21 +183,24 @@ export async function renderRecommended() {
   try {
     _watchedIds = new Set(history.map(v => v.id))
     _allVideos = []
+    _discoveryVideos = []
     _loadedUpTo = 0
     _renderedCount = 0
 
-    // Channels from watch history (most recently watched first, up to 30)
+    // Top channel names for discovery search queries
     const seenChannels = new Set()
     const historyChannelIds = []
+    const topChannelNames = []
     for (const v of history.slice(0, 100)) {
       if (v.channelId && !seenChannels.has(v.channelId)) {
         seenChannels.add(v.channelId)
         historyChannelIds.push(v.channelId)
+        if (v.channelTitle) topChannelNames.push(v.channelTitle)
         if (historyChannelIds.length >= 30) break
       }
     }
 
-    // Channels from subscriptions not already in watch history (up to 120 extra)
+    // Subscription channels not already in watch history
     const subChannelIds = []
     try {
       let pageToken = null
@@ -172,21 +217,26 @@ export async function renderRecommended() {
       } while (pageToken && subChannelIds.length < 120)
     } catch {}
 
-    // Fetch channel details for all (history first, then subs)
+    // Fetch channel details + discovery in parallel
     const allChannelIds = [...historyChannelIds, ...subChannelIds]
-    const channelMap = new Map()
-    for (let i = 0; i < allChannelIds.length; i += 50) {
-      const data = await getChannelsDetails(allChannelIds.slice(i, i + 50))
-      for (const ch of data.items ?? []) {
-        const uploadsPlaylistId = ch.contentDetails?.relatedPlaylists?.uploads
-        if (uploadsPlaylistId) channelMap.set(ch.id, { id: ch.id, title: ch.snippet.title, uploadsPlaylistId })
-      }
-    }
+    const [channelResults] = await Promise.all([
+      (async () => {
+        const map = new Map()
+        for (let i = 0; i < allChannelIds.length; i += 50) {
+          const data = await getChannelsDetails(allChannelIds.slice(i, i + 50))
+          for (const ch of data.items ?? []) {
+            const uploadsPlaylistId = ch.contentDetails?.relatedPlaylists?.uploads
+            if (uploadsPlaylistId) map.set(ch.id, { id: ch.id, title: ch.snippet.title, uploadsPlaylistId })
+          }
+        }
+        return map
+      })(),
+      fetchDiscovery(topChannelNames, _watchedIds).then(videos => { _discoveryVideos = videos }),
+    ])
 
-    // Preserve order: recently-watched channels first, then subscription-only channels
-    _channels = allChannelIds.map(id => channelMap.get(id)).filter(Boolean)
+    _channels = allChannelIds.map(id => channelResults.get(id)).filter(Boolean)
 
-    if (_channels.length === 0) {
+    if (_channels.length === 0 && _discoveryVideos.length === 0) {
       app.innerHTML = `
         <div class="max-w-7xl mx-auto px-4 pt-6">
           <h1 class="text-xl font-bold mb-4">Recomendados</h1>
