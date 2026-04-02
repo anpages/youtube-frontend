@@ -15,7 +15,7 @@ export function videoCard({ id, title, channelTitle, thumbnail, duration, viewCo
         ${duration ? `<span class="absolute bottom-1 right-1 bg-black/80 text-xs px-1.5 py-0.5 rounded text-white font-medium tabular-nums">${escapeHtml(duration)}</span>` : ''}
       </div>
       <div class="px-0.5">
-        <h3 class="text-sm font-medium text-neutral-200 line-clamp-2 leading-snug group-hover:text-white transition-colors">
+        <h3 class="text-sm font-medium text-neutral-200 leading-snug group-hover:text-neutral-100 transition-colors">
           ${escapeHtml(title)}
         </h3>
         <p class="text-xs text-neutral-400 mt-1 truncate">${escapeHtml(channelTitle)}</p>
