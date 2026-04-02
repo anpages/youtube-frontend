@@ -47,7 +47,8 @@ export async function renderWatch(videoId) {
         <!-- Video -->
         <div id="player-inner" class="aspect-video">
           <iframe
-            src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0&modestbranding=1&autoplay=1${startAt > 0 ? `&start=${startAt}` : ''}"
+            id="yt-iframe"
+            src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0&modestbranding=1&autoplay=1&enablejsapi=1${startAt > 0 ? `&start=${startAt}` : ''}"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowfullscreen
             loading="lazy"
@@ -130,20 +131,47 @@ export async function renderWatch(videoId) {
     if (!document.getElementById('player-wrap')) document.removeEventListener('keydown', onKey)
   })
 
-  // Time-based progress tracking — starts once we know the video duration
+  // Progress tracking — uses YT API currentTime if available, else time-based fallback
   let progressInterval = null
   const watchStart = Date.now()
+  let ytPlayer = null
+
+  // Load YT IFrame API as optional enhancement (video plays regardless)
+  function tryAttachYtApi() {
+    const attach = () => {
+      try {
+        ytPlayer = new YT.Player('yt-iframe')
+      } catch (e) {}
+    }
+    if (window.YT?.Player) {
+      attach()
+    } else {
+      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+        const tag = document.createElement('script')
+        tag.src = 'https://www.youtube.com/iframe_api'
+        document.head.appendChild(tag)
+      }
+      const prev = window.onYouTubeIframeAPIReady
+      window.onYouTubeIframeAPIReady = () => { prev?.(); attach() }
+    }
+  }
+  tryAttachYtApi()
+
+  function currentPosition() {
+    try {
+      if (ytPlayer?.getCurrentTime) return ytPlayer.getCurrentTime()
+    } catch (e) {}
+    return startAt + (Date.now() - watchStart) / 1000
+  }
 
   function startProgressTracking(durationSecs) {
     if (!durationSecs) return
     progressInterval = setInterval(() => {
-      const elapsed = (Date.now() - watchStart) / 1000
-      saveProgress(videoId, Math.min(startAt + elapsed, durationSecs), durationSecs)
+      saveProgress(videoId, Math.min(currentPosition(), durationSecs), durationSecs)
     }, 5000)
     window.addEventListener('hashchange', () => {
       clearInterval(progressInterval)
-      const elapsed = (Date.now() - watchStart) / 1000
-      saveProgress(videoId, Math.min(startAt + elapsed, durationSecs), durationSecs)
+      saveProgress(videoId, Math.min(currentPosition(), durationSecs), durationSecs)
     }, { once: true })
   }
 
