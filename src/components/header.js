@@ -13,7 +13,8 @@ export function renderHeader(currentPath = '/') {
 
   const { used, limit } = getQuotaUsage()
   const quotaPct = used / limit
-  const quotaColor = quotaPct >= 0.8 ? '#ef4444' : quotaPct >= 0.5 ? '#f59e0b' : '#22c55e'
+  const isLight = document.documentElement.classList.contains('light')
+  const quotaColor = quotaPct >= 0.8 ? '#ef4444' : quotaPct >= 0.5 ? '#f59e0b' : isLight ? '#16a34a' : '#22c55e'
   const quotaBadge = authed ? `
     <span id="quota-badge" title="Quota API YouTube hoy (se renueva a medianoche hora del Pacífico)"
       style="font-size:11px;color:${quotaColor};white-space:nowrap;cursor:default"
@@ -22,8 +23,19 @@ export function renderHeader(currentPath = '/') {
     </span>
   ` : ''
 
+  const themeBtn = `
+    <button id="theme-toggle-btn" title="${isLight ? 'Modo oscuro' : 'Modo claro'}"
+      class="shrink-0 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 p-2 rounded-full text-neutral-300 transition-colors">
+      ${isLight
+        ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>`
+        : `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>`
+      }
+    </button>
+  `
+
   const authSection = authed
     ? `
+      ${themeBtn}
       <button
         id="sign-out-btn"
         class="shrink-0 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 px-3 py-1.5 rounded-full text-sm font-medium text-neutral-300 transition-colors"
@@ -82,17 +94,11 @@ export function renderHeader(currentPath = '/') {
           <div class="w-px h-4 bg-neutral-700 mr-1"></div>
         ` : ''}
         ${NAV_LINKS.map(({ href, label, path }) => `
-          <a href="${href}" class="px-3 py-2 text-sm font-medium transition-colors ${currentPath === path ? 'text-white border-b-2 border-red-500' : 'text-neutral-400 hover:text-neutral-200'}">
+          <a href="${href}" class="px-3 py-2 text-sm font-medium transition-colors ${currentPath === path ? 'text-neutral-100 border-b-2 border-red-500' : 'text-neutral-400 hover:text-neutral-200'}">
             ${label}
           </a>
         `).join('')}
         <div class="ml-auto"></div>
-        <button id="theme-toggle-btn" class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-neutral-200 transition-colors">
-          ${document.documentElement.classList.contains('light')
-            ? `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>Oscuro`
-            : `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>Claro`
-          }
-        </button>
         <button id="refresh-btn" class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-neutral-200 transition-colors">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -138,7 +144,8 @@ document.addEventListener('quota-updated', () => {
   if (!badge) return
   const { used, limit } = getQuotaUsage()
   const pct = used / limit
-  badge.style.color = pct >= 0.8 ? '#ef4444' : pct >= 0.5 ? '#f59e0b' : '#22c55e'
+  const light = document.documentElement.classList.contains('light')
+  badge.style.color = pct >= 0.8 ? '#ef4444' : pct >= 0.5 ? '#f59e0b' : light ? '#16a34a' : '#22c55e'
   badge.textContent = `${used.toLocaleString()} / ${limit.toLocaleString()}`
 })
 

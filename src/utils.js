@@ -26,12 +26,12 @@ export function timeAgo(dateStr) {
   const d = Math.floor(h / 24)
   const mo = Math.floor(d / 30)
   const y = Math.floor(mo / 12)
-  if (y > 0) return `${y} year${y > 1 ? 's' : ''} ago`
-  if (mo > 0) return `${mo} month${mo > 1 ? 's' : ''} ago`
-  if (d > 0) return `${d} day${d > 1 ? 's' : ''} ago`
-  if (h > 0) return `${h} hour${h > 1 ? 's' : ''} ago`
-  if (m > 0) return `${m} minute${m > 1 ? 's' : ''} ago`
-  return 'just now'
+  if (y > 0) return `hace ${y} ${y > 1 ? 'años' : 'año'}`
+  if (mo > 0) return `hace ${mo} ${mo > 1 ? 'meses' : 'mes'}`
+  if (d > 0) return `hace ${d} ${d > 1 ? 'días' : 'día'}`
+  if (h > 0) return `hace ${h} ${h > 1 ? 'horas' : 'hora'}`
+  if (m > 0) return `hace ${m} ${m > 1 ? 'minutos' : 'minuto'}`
+  return 'ahora mismo'
 }
 
 export function escapeHtml(str) {
