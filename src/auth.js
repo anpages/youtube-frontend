@@ -5,6 +5,8 @@ const SCOPES = 'https://www.googleapis.com/auth/youtube openid profile email'
 const STORAGE_KEY = 'yt_auth_v1'
 
 let _tokenClient = null
+let _silentClient = null
+let _refreshTimer = null
 let _token = null    // { access_token, expiry }
 let _userInfo = null // { id, name, email, picture }
 
@@ -38,8 +40,39 @@ function _persist() {
   }))
 }
 
+function _scheduleRefresh(expiry) {
+  if (_refreshTimer) clearTimeout(_refreshTimer)
+  const msUntilExpiry = expiry - Date.now()
+  const msUntilRefresh = msUntilExpiry - 5 * 60 * 1000 // 5 min before expiry
+  if (msUntilRefresh <= 0) return
+  _refreshTimer = setTimeout(_silentRefresh, msUntilRefresh)
+}
+
+function _silentRefresh() {
+  if (!window.google?.accounts?.oauth2 || !import.meta.env.VITE_GOOGLE_CLIENT_ID) return
+  if (!_silentClient) {
+    _silentClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      scope: SCOPES,
+      prompt: '',
+      callback: async (response) => {
+        if (response.error || !response.access_token) return // silently fail
+        _token = {
+          access_token: response.access_token,
+          expiry: Date.now() + response.expires_in * 1000,
+        }
+        _persist()
+        _scheduleRefresh(_token.expiry)
+        document.dispatchEvent(new CustomEvent('auth-changed'))
+      },
+    })
+  }
+  _silentClient.requestAccessToken({ prompt: '' })
+}
+
 export function initAuth() {
   _loadStored()
+  if (_token) _scheduleRefresh(_token.expiry)
 }
 
 export function signIn() {
@@ -70,6 +103,7 @@ export function signIn() {
           console.warn('Could not fetch user info:', e)
         }
         _persist()
+        _scheduleRefresh(_token.expiry)
         document.dispatchEvent(new CustomEvent('auth-changed'))
       },
     })
@@ -78,6 +112,8 @@ export function signIn() {
 }
 
 export function signOut() {
+  if (_refreshTimer) clearTimeout(_refreshTimer)
+  _refreshTimer = null
   if (_token) {
     window.google.accounts.oauth2.revoke(_token.access_token, () => {})
   }
