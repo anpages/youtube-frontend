@@ -1,5 +1,4 @@
 import { renderHome } from './pages/home.js'
-import { renderSearch } from './pages/search.js'
 import { renderWatch } from './pages/watch.js'
 import { renderSubscriptions } from './pages/subscriptions.js'
 import { renderHistory } from './pages/history.js'
@@ -33,16 +32,13 @@ function restoreScroll(path) {
 async function handleRoute() {
   const { path, params } = getRoute()
 
-  const searchQuery = path.startsWith('/search') ? (params.get('q') ?? '') : ''
-  renderHeader(searchQuery, path)
+  renderHeader(path)
 
   const app = document.getElementById('app')
   app.innerHTML = ''
 
   if (path === '/') {
     await renderHome()
-  } else if (path === '/search') {
-    await renderSearch(params.get('q') ?? '')
   } else if (path === '/watch') {
     await renderWatch(params.get('v') ?? '')
   } else if (path === '/subscriptions') {

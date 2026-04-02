@@ -7,7 +7,7 @@ const NAV_LINKS = [
   { href: '#/history',       label: 'Historial',     path: '/history'       },
 ]
 
-export function renderHeader(searchQuery = '', currentPath = '/') {
+export function renderHeader(currentPath = '/') {
   const user = getUserInfo()
   const authed = isAuthenticated()
 
@@ -60,23 +60,7 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
           </svg>
           <span class="hidden sm:inline">YTube</span>
         </a>
-        <form id="search-form" class="flex-1 flex gap-2 min-w-0">
-          <input
-            id="search-input"
-            type="search"
-            value="${escapeAttr(searchQuery)}"
-            placeholder="Buscar vídeos..."
-            autocomplete="off"
-            class="flex-1 min-w-0 bg-neutral-800 border border-neutral-700 rounded-full px-4 py-1.5 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
-          />
-          <button
-            type="submit"
-            class="shrink-0 bg-neutral-700 hover:bg-neutral-600 active:bg-neutral-500 px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-            aria-label="Search"
-          >
-            Buscar
-          </button>
-        </form>
+        <div class="flex-1"></div>
         ${quotaBadge}
         ${authSection}
       </nav>
@@ -108,12 +92,6 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
 
   document.getElementById('subnav-back-btn')?.addEventListener('click', () => window.history.back())
 
-  document.getElementById('search-form').addEventListener('submit', e => {
-    e.preventDefault()
-    const q = document.getElementById('search-input').value.trim()
-    if (q) window.location.hash = `/search?q=${encodeURIComponent(q)}`
-  })
-
   if (authed) {
     document.getElementById('sign-out-btn').addEventListener('click', () => {
       signOut()
@@ -126,17 +104,13 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
   }
 }
 
-function getCurrentHeaderArgs() {
+function getCurrentPath() {
   const hash = window.location.hash || '#/'
-  const withoutHash = hash.slice(1)
-  const [pathPart, queryStr] = withoutHash.split('?')
-  const params = new URLSearchParams(queryStr ?? '')
-  const path = pathPart || '/'
-  return [path.startsWith('/search') ? (params.get('q') ?? '') : '', path]
+  return hash.slice(1).split('?')[0] || '/'
 }
 
 // Re-render header when auth state or quota changes
-document.addEventListener('auth-changed', () => renderHeader(...getCurrentHeaderArgs()))
+document.addEventListener('auth-changed', () => renderHeader(getCurrentPath()))
 document.addEventListener('quota-updated', () => {
   const badge = document.getElementById('quota-badge')
   if (!badge) return
@@ -149,8 +123,4 @@ document.addEventListener('quota-updated', () => {
 function initials(name) {
   if (!name) return '?'
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-}
-
-function escapeAttr(str) {
-  return String(str ?? '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
