@@ -3,9 +3,15 @@ import { getMySubscriptions, getChannelsDetails, getPlaylistVideos } from '../ap
 import { videoCard } from '../components/videoCard.js'
 import { timeAgo, escapeHtml } from '../utils.js'
 
+const BATCH_SIZE = 12      // channels per load
+const VIDEOS_PER_CH = 3    // videos per channel
+
 let _selectedChannelId = null
 let _allVideos = []
 let _channels = []
+let _loadedUpTo = 0
+let _loading = false
+let _observer = null
 
 async function fetchAllSubscriptions() {
   const items = []
@@ -35,95 +41,121 @@ async function fetchChannelMap(channelIds) {
   return map
 }
 
-function renderChannelChips() {
-  const container = document.getElementById('channel-filters')
-  if (!container) return
+function getVisibleVideos() {
+  return _selectedChannelId
+    ? _allVideos.filter(v => v.channelId === _selectedChannelId)
+    : _allVideos
+}
 
-  container.innerHTML = `
+function renderSidebar() {
+  const sidebar = document.getElementById('sub-sidebar')
+  if (!sidebar) return
+
+  sidebar.innerHTML = `
     <button
-      class="channel-chip shrink-0 flex items-center px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${!_selectedChannelId ? 'bg-white text-black' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}"
+      class="sidebar-ch w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${!_selectedChannelId ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900'}"
       data-id=""
     >
       Todos
     </button>
     ${_channels.map(ch => `
       <button
-        class="channel-chip shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${_selectedChannelId === ch.id ? 'bg-white text-black' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}"
+        class="sidebar-ch w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${_selectedChannelId === ch.id ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900'}"
         data-id="${escapeHtml(ch.id)}"
       >
-        ${ch.thumbnail
-          ? `<img src="${escapeHtml(ch.thumbnail)}" alt="" class="w-5 h-5 rounded-full object-cover shrink-0" />`
-          : ''}
-        ${escapeHtml(ch.title)}
+        ${ch.thumbnail ? `<img src="${escapeHtml(ch.thumbnail)}" alt="" class="w-6 h-6 rounded-full object-cover shrink-0" />` : ''}
+        <span class="truncate">${escapeHtml(ch.title)}</span>
       </button>
     `).join('')}
   `
 
-  container.querySelectorAll('.channel-chip').forEach(btn => {
+  sidebar.querySelectorAll('.sidebar-ch').forEach(btn => {
     btn.addEventListener('click', () => {
       _selectedChannelId = btn.dataset.id || null
-      renderChannelChips()
-      renderVideoFeed()
+      renderSidebar()
+      renderVideoGrid()
     })
   })
 }
 
-function renderVideoFeed() {
-  const feed = document.getElementById('video-feed')
-  if (!feed) return
+function renderVideoGrid() {
+  const grid = document.getElementById('video-grid')
+  if (!grid) return
 
-  const videos = _selectedChannelId
-    ? _allVideos.filter(v => v.channelId === _selectedChannelId)
-    : _allVideos
+  const videos = getVisibleVideos()
 
   if (videos.length === 0) {
-    feed.innerHTML = `<p class="text-neutral-500 text-sm py-8">No hay vídeos recientes.</p>`
+    grid.innerHTML = `<p class="col-span-2 text-neutral-500 text-sm py-8">No hay vídeos recientes.</p>`
     return
   }
 
-  feed.innerHTML = `
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
-      ${videos.map(v => videoCard({
-        id: v.id,
-        title: v.title,
-        channelTitle: v.channelTitle,
-        thumbnail: v.thumbnail,
-        publishedAt: timeAgo(v.publishedAt),
-      })).join('')}
-    </div>
-  `
+  grid.innerHTML = videos.map(v => videoCard({
+    id: v.id,
+    title: v.title,
+    channelTitle: v.channelTitle,
+    thumbnail: v.thumbnail,
+    publishedAt: timeAgo(v.publishedAt),
+  })).join('')
 }
 
-async function loadAllVideos(channelMap) {
-  const channels = [...channelMap.values()].filter(c => c.uploadsPlaylistId)
+function updateSentinel() {
+  const sentinel = document.getElementById('sub-sentinel')
+  if (!sentinel) return
+  const loadable = _channels.filter(c => c.uploadsPlaylistId)
+  const hasMore = _loadedUpTo < loadable.length && !_selectedChannelId
+  sentinel.innerHTML = hasMore
+    ? `<div class="flex justify-center py-6">
+        <svg class="animate-spin w-6 h-6 text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+        </svg>
+      </div>`
+    : ''
+}
 
-  for (let i = 0; i < channels.length; i += 6) {
-    const batch = channels.slice(i, i + 6)
-    const results = await Promise.allSettled(
-      batch.map(ch =>
-        getPlaylistVideos(ch.uploadsPlaylistId, 10).then(data => ({
+async function loadNextBatch() {
+  if (_loading) return
+  const loadable = _channels.filter(c => c.uploadsPlaylistId)
+  if (_loadedUpTo >= loadable.length) return
+
+  _loading = true
+
+  const batch = loadable.slice(_loadedUpTo, _loadedUpTo + BATCH_SIZE)
+  _loadedUpTo += batch.length
+
+  const results = await Promise.allSettled(
+    batch.map(ch =>
+      getPlaylistVideos(ch.uploadsPlaylistId, VIDEOS_PER_CH).then(data =>
+        (data.items ?? []).map(item => ({
+          id: item.snippet.resourceId?.videoId ?? item.contentDetails?.videoId ?? '',
+          title: item.snippet.title,
+          thumbnail: item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? '',
+          publishedAt: item.contentDetails?.videoPublishedAt ?? item.snippet.publishedAt ?? '',
           channelId: ch.id,
           channelTitle: ch.title,
-          videos: (data.items ?? []).map(item => ({
-            id: item.snippet.resourceId?.videoId ?? item.contentDetails?.videoId ?? '',
-            title: item.snippet.title,
-            thumbnail: item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? '',
-            publishedAt: item.contentDetails?.videoPublishedAt ?? item.snippet.publishedAt ?? '',
-            channelId: ch.id,
-            channelTitle: ch.title,
-          })),
-        }))
+        })).filter(v => v.id)
       )
     )
+  )
 
-    for (const result of results) {
-      if (result.status === 'fulfilled') {
-        _allVideos.push(...result.value.videos)
-      }
-    }
+  for (const r of results) {
+    if (r.status === 'fulfilled') _allVideos.push(...r.value)
   }
-
   _allVideos.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+
+  renderVideoGrid()
+  updateSentinel()
+  _loading = false
+}
+
+function setupInfiniteScroll() {
+  _observer?.disconnect()
+  const sentinel = document.getElementById('sub-sentinel')
+  if (!sentinel) return
+  _observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) loadNextBatch()
+  }, { rootMargin: '200px' })
+  _observer.observe(sentinel)
 }
 
 export async function renderSubscriptions() {
@@ -131,6 +163,9 @@ export async function renderSubscriptions() {
   _selectedChannelId = null
   _allVideos = []
   _channels = []
+  _loadedUpTo = 0
+  _loading = false
+  _observer?.disconnect()
 
   if (!isAuthenticated()) {
     app.innerHTML = `
@@ -146,8 +181,8 @@ export async function renderSubscriptions() {
   }
 
   app.innerHTML = `
-    <div class="max-w-7xl mx-auto px-4 pt-6 flex flex-col items-center justify-center min-h-[60vh]" id="loader-wrap">
-      <svg class="animate-spin w-8 h-8 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+    <div class="flex flex-col items-center justify-center min-h-[60vh]">
+      <svg class="animate-spin w-8 h-8 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
       </svg>
@@ -161,7 +196,6 @@ export async function renderSubscriptions() {
     if (subs.length === 0) {
       app.innerHTML = `
         <div class="max-w-7xl mx-auto px-4 pt-6">
-          <h1 class="text-xl font-bold mb-4">Suscripciones</h1>
           <p class="text-neutral-500 text-sm py-8">Aún no tienes suscripciones.</p>
         </div>
       `
@@ -172,18 +206,22 @@ export async function renderSubscriptions() {
     const channelMap = await fetchChannelMap(channelIds)
     _channels = [...channelMap.values()]
 
-    await loadAllVideos(channelMap)
-
+    // Render layout with sidebar immediately
     app.innerHTML = `
-      <div class="max-w-7xl mx-auto px-4 pt-6">
-        <h1 class="text-xl font-bold mb-4">Suscripciones</h1>
-        <div id="channel-filters" class="flex gap-2 overflow-x-auto pb-3 mb-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"></div>
-        <div id="video-feed"></div>
+      <div class="flex min-h-screen">
+        <aside class="w-44 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto sticky top-0 max-h-screen">
+          <div id="sub-sidebar" class="space-y-0.5"></div>
+        </aside>
+        <div class="flex-1 min-w-0 px-4 py-4">
+          <div id="video-grid" class="grid grid-cols-2 gap-3"></div>
+          <div id="sub-sentinel"></div>
+        </div>
       </div>
     `
 
-    renderChannelChips()
-    renderVideoFeed()
+    renderSidebar()
+    await loadNextBatch()
+    setupInfiniteScroll()
   } catch (err) {
     app.innerHTML = `
       <div class="max-w-7xl mx-auto px-4 pt-6">
@@ -191,19 +229,4 @@ export async function renderSubscriptions() {
       </div>
     `
   }
-}
-
-function skeletonGrid() {
-  return `
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
-      ${Array.from({ length: 12 }, () => `
-        <div class="space-y-2 animate-pulse">
-          <div class="aspect-video bg-neutral-800 rounded-lg"></div>
-          <div class="h-3 bg-neutral-800 rounded w-4/5"></div>
-          <div class="h-3 bg-neutral-800 rounded w-3/5"></div>
-          <div class="h-3 bg-neutral-800 rounded w-2/5"></div>
-        </div>
-      `).join('')}
-    </div>
-  `
 }
