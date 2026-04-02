@@ -309,7 +309,7 @@ export async function renderSubscriptions() {
     // Render layout with sidebar immediately
     app.innerHTML = `
       <div class="flex min-h-screen">
-        <aside id="sub-aside" class="w-56 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto sticky max-h-screen" style="top:${document.getElementById('app').style.paddingTop || '0px'}">
+        <aside class="w-56 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto sticky top-0 max-h-screen">
           <div id="sub-sidebar" class="space-y-0.5"></div>
         </aside>
         <div class="flex-1 min-w-0 px-4 py-4">

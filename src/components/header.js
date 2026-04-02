@@ -39,7 +39,7 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
   }
 
   header.innerHTML = `
-    <div class="fixed top-0 left-0 right-0 z-50 bg-neutral-950/95 backdrop-blur-sm border-b border-neutral-800">
+    <div class="bg-neutral-950 border-b border-neutral-800">
       <nav class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
         <a href="#/" class="text-red-500 font-bold text-lg shrink-0 flex items-center gap-1.5" aria-label="Home">
           <svg viewBox="0 0 24 24" class="w-6 h-6 fill-current" aria-hidden="true">
@@ -67,25 +67,23 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
         ${authSection}
       </nav>
       ${authed ? `
-        <div class="max-w-7xl mx-auto px-4 flex gap-1 border-t border-neutral-800/60">
-          ${NAV_LINKS.map(({ href, label, path }) => `
-            <a
-              href="${href}"
-              class="px-3 py-2 text-sm font-medium transition-colors ${currentPath === path ? 'text-white border-b-2 border-red-500' : 'text-neutral-400 hover:text-neutral-200'}"
-            >
-              ${label}
-            </a>
-          `).join('')}
+        <div class="sticky top-0 z-50 bg-neutral-950/95 backdrop-blur-sm border-b border-neutral-800">
+          <div class="max-w-7xl mx-auto px-4 flex gap-1">
+            ${NAV_LINKS.map(({ href, label, path }) => `
+              <a
+                href="${href}"
+                class="px-3 py-2 text-sm font-medium transition-colors ${currentPath === path ? 'text-white border-b-2 border-red-500' : 'text-neutral-400 hover:text-neutral-200'}"
+              >
+                ${label}
+              </a>
+            `).join('')}
+          </div>
         </div>
       ` : ''}
     </div>
   `
 
-  // Push main content below the fixed header
-  requestAnimationFrame(() => {
-    const h = document.getElementById('header').getBoundingClientRect().height
-    document.getElementById('app').style.paddingTop = `${h}px`
-  })
+  document.getElementById('app').style.paddingTop = ''
 
   document.getElementById('search-form').addEventListener('submit', e => {
     e.preventDefault()
