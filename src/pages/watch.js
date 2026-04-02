@@ -2,7 +2,7 @@ import { getVideoDetails, getSubscriptionStatus, subscribeToChannel, unsubscribe
 import { isAuthenticated } from '../auth.js'
 import { addToHistory } from '../history-store.js'
 import { parseDuration, parseDurationSecs, formatCount, timeAgo, escapeHtml } from '../utils.js'
-import { saveProgress } from '../progress-store.js'
+import { saveProgress, getProgress } from '../progress-store.js'
 
 export async function renderWatch(videoId) {
   const app = document.getElementById('app')
@@ -11,6 +11,10 @@ export async function renderWatch(videoId) {
     app.innerHTML = `<div class="text-center py-16 text-neutral-500">No se especificó ningún vídeo.</div>`
     return
   }
+
+  // Resume from saved progress (only if between 5% and 92% watched)
+  const saved = getProgress(videoId)
+  const startAt = (saved && saved.ratio >= 0.05 && saved.ratio < 0.92) ? Math.floor(saved.seconds) : 0
 
   // Render player immediately — no waiting for API
   app.innerHTML = `
@@ -43,7 +47,7 @@ export async function renderWatch(videoId) {
         <!-- Video -->
         <div id="player-inner" class="aspect-video">
           <iframe
-            src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0&modestbranding=1&autoplay=1"
+            src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0&modestbranding=1&autoplay=1${startAt > 0 ? `&start=${startAt}` : ''}"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowfullscreen
             loading="lazy"
