@@ -6,6 +6,34 @@ import { timeAgo, escapeHtml } from '../utils.js'
 
 const BATCH_SIZE = 12      // channels per load
 const VIDEOS_PER_CH = 3    // videos per channel
+const CACHE_KEY = 'yt_subs_v1'
+const CACHE_TTL = 4 * 60 * 60 * 1000 // 4 hours
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ts: Date.now(),
+      channels: _channels,
+      videos: _allVideos,
+    }))
+  } catch {}
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return false
+    const { ts, channels, videos } = JSON.parse(raw)
+    if (Date.now() - ts > CACHE_TTL) return false
+    _channels = channels
+    _allVideos = videos
+    return true
+  } catch { return false }
+}
+
+function bustStorage() {
+  try { localStorage.removeItem(CACHE_KEY) } catch {}
+}
 
 let _selectedChannelId = null
 let _allVideos = []
@@ -175,6 +203,7 @@ async function loadNextBatch() {
 
   renderVideoGrid()
   updateSentinel()
+  saveToStorage()
   _loading = false
 }
 
@@ -289,7 +318,16 @@ export async function renderSubscriptions() {
     return
   }
 
-  // Restore from cache without re-fetching
+  // Check pull-to-refresh bust flag
+  const forceFresh = sessionStorage.getItem('ptr_refresh') === '1'
+  if (forceFresh) {
+    sessionStorage.removeItem('ptr_refresh')
+    bustStorage()
+    _channels = []
+    _allVideos = []
+  }
+
+  // Restore from module-level cache (back navigation)
   if (_channels.length > 0) {
     app.innerHTML = buildLayout()
     renderSidebar()
@@ -307,6 +345,19 @@ export async function renderSubscriptions() {
       updateSentinel()
       setupInfiniteScroll()
     }
+    return
+  }
+
+  // Restore from localStorage cache (page reload within TTL)
+  if (!forceFresh && loadFromStorage() && _channels.length > 0) {
+    _loadedUpTo = _channels.length
+    _renderedCount = 0
+    _selectedChannelId = null
+    app.innerHTML = buildLayout()
+    renderSidebar()
+    renderVideoGrid()
+    updateSentinel()
+    setupInfiniteScroll()
     return
   }
 
