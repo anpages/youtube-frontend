@@ -4,7 +4,7 @@ import { getQuotaUsage } from '../api.js'
 const NAV_LINKS = [
   { href: '#/recommended',   label: 'Recomendados',  path: '/recommended'   },
   { href: '#/subscriptions', label: 'Suscripciones', path: '/subscriptions' },
-  { href: '#/history',       label: 'Historial',     path: '/history'       },
+  { href: '#/history',       label: 'Seguir viendo', path: '/history'       },
 ]
 
 export function renderHeader(currentPath = '/') {
