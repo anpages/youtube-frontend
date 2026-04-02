@@ -39,7 +39,7 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
   }
 
   header.innerHTML = `
-    <div class="sticky top-0 z-50 bg-neutral-950/95 backdrop-blur-sm border-b border-neutral-800">
+    <div class="fixed top-0 left-0 right-0 z-50 bg-neutral-950/95 backdrop-blur-sm border-b border-neutral-800">
       <nav class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
         <a href="#/" class="text-red-500 font-bold text-lg shrink-0 flex items-center gap-1.5" aria-label="Home">
           <svg viewBox="0 0 24 24" class="w-6 h-6 fill-current" aria-hidden="true">
@@ -80,6 +80,12 @@ export function renderHeader(searchQuery = '', currentPath = '/') {
       ` : ''}
     </div>
   `
+
+  // Push main content below the fixed header
+  requestAnimationFrame(() => {
+    const h = document.getElementById('header').getBoundingClientRect().height
+    document.getElementById('app').style.paddingTop = `${h}px`
+  })
 
   document.getElementById('search-form').addEventListener('submit', e => {
     e.preventDefault()
