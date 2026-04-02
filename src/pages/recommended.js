@@ -1,11 +1,11 @@
 import { isAuthenticated, signIn } from '../auth.js'
 import { getHistory } from '../history-store.js'
-import { getChannelsDetails, getPlaylistVideos } from '../api.js'
+import { getChannelsDetails, getPlaylistVideos, getMySubscriptions } from '../api.js'
 import { videoCard } from '../components/videoCard.js'
 import { timeAgo, escapeHtml } from '../utils.js'
 
-const BATCH_SIZE = 10
-const VIDEOS_PER_CH = 5
+const BATCH_SIZE = 15
+const VIDEOS_PER_CH = 10
 
 // Module-level cache
 let _channels = []
@@ -144,26 +144,47 @@ export async function renderRecommended() {
     _loadedUpTo = 0
     _renderedCount = 0
 
+    // Channels from watch history (most recently watched first, up to 30)
     const seenChannels = new Set()
-    const recentChannelIds = []
-    for (const v of history.slice(0, 60)) {
+    const historyChannelIds = []
+    for (const v of history.slice(0, 100)) {
       if (v.channelId && !seenChannels.has(v.channelId)) {
         seenChannels.add(v.channelId)
-        recentChannelIds.push(v.channelId)
-        if (recentChannelIds.length >= 30) break
+        historyChannelIds.push(v.channelId)
+        if (historyChannelIds.length >= 30) break
       }
     }
 
+    // Channels from subscriptions not already in watch history (up to 120 extra)
+    const subChannelIds = []
+    try {
+      let pageToken = null
+      do {
+        const data = await getMySubscriptions(pageToken)
+        for (const item of data.items ?? []) {
+          const chId = item.snippet?.resourceId?.channelId
+          if (chId && !seenChannels.has(chId)) {
+            seenChannels.add(chId)
+            subChannelIds.push(chId)
+          }
+        }
+        pageToken = data.nextPageToken ?? null
+      } while (pageToken && subChannelIds.length < 120)
+    } catch {}
+
+    // Fetch channel details for all (history first, then subs)
+    const allChannelIds = [...historyChannelIds, ...subChannelIds]
     const channelMap = new Map()
-    for (let i = 0; i < recentChannelIds.length; i += 50) {
-      const data = await getChannelsDetails(recentChannelIds.slice(i, i + 50))
+    for (let i = 0; i < allChannelIds.length; i += 50) {
+      const data = await getChannelsDetails(allChannelIds.slice(i, i + 50))
       for (const ch of data.items ?? []) {
         const uploadsPlaylistId = ch.contentDetails?.relatedPlaylists?.uploads
         if (uploadsPlaylistId) channelMap.set(ch.id, { id: ch.id, title: ch.snippet.title, uploadsPlaylistId })
       }
     }
 
-    _channels = [...channelMap.values()]
+    // Preserve order: recently-watched channels first, then subscription-only channels
+    _channels = allChannelIds.map(id => channelMap.get(id)).filter(Boolean)
 
     if (_channels.length === 0) {
       app.innerHTML = `
