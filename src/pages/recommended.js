@@ -33,6 +33,7 @@ function saveToStorage() {
       ts: Date.now(),
       channels: _channels,
       videos: _allVideos,
+      loadedUpTo: _loadedUpTo,
     }))
   } catch {}
 }
@@ -41,10 +42,11 @@ function loadFromStorage() {
   try {
     const raw = localStorage.getItem(CACHE_KEY)
     if (!raw) return false
-    const { ts, channels, videos } = JSON.parse(raw)
+    const { ts, channels, videos, loadedUpTo } = JSON.parse(raw)
     if (Date.now() - ts > CACHE_TTL) return false
     _channels = channels
     _allVideos = videos
+    _loadedUpTo = loadedUpTo ?? 0
     return true
   } catch { return false }
 }
@@ -188,7 +190,6 @@ export async function renderRecommended() {
 
   // Restore from localStorage cache (page reload within TTL)
   if (!forceFresh && loadFromStorage() && _channels.length > 0) {
-    _loadedUpTo = _channels.length
     _renderedCount = 0
     _watchedIds = new Set(getHistory().map(v => v.id))
     app.innerHTML = buildLayout()
