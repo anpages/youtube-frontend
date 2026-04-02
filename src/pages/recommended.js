@@ -9,6 +9,14 @@ const VIDEOS_PER_CH = 8
 const DISCOVERY_PER_QUERY = 15
 const DISCOVERY_QUERIES = 5
 
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
 // Module-level cache
 let _channels = []
 let _allVideos = []
@@ -89,7 +97,6 @@ async function loadNextBatch() {
     }
     _discoveryVideos = []
   }
-  _allVideos.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
   renderGrid()
   updateSentinel()
   _loading = false
@@ -107,7 +114,7 @@ function setupObserver() {
 
 // Fetch videos from outside subscribed channels via keyword search
 async function fetchDiscovery(topChannelNames, watchedIds) {
-  const queries = topChannelNames.slice(0, DISCOVERY_QUERIES)
+  const queries = shuffle([...topChannelNames]).slice(0, DISCOVERY_QUERIES)
   const results = await Promise.allSettled(
     queries.map(q => searchVideos(q, DISCOVERY_PER_QUERY))
   )
@@ -234,7 +241,9 @@ export async function renderRecommended() {
       fetchDiscovery(topChannelNames, _watchedIds).then(videos => { _discoveryVideos = videos }),
     ])
 
-    _channels = allChannelIds.map(id => channelResults.get(id)).filter(Boolean)
+    const historyChannels = historyChannelIds.map(id => channelResults.get(id)).filter(Boolean)
+    const subChannels     = subChannelIds.map(id => channelResults.get(id)).filter(Boolean)
+    _channels = [...shuffle(historyChannels), ...shuffle(subChannels)]
 
     if (_channels.length === 0 && _discoveryVideos.length === 0) {
       app.innerHTML = `
