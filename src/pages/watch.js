@@ -35,26 +35,13 @@ export async function renderWatch(videoId) {
       <div id="player-wrap" class="relative bg-black rounded-lg overflow-hidden group">
 
         <!-- Nav bar (theater mode, hidden by default) -->
-        <div id="theater-nav" class="hidden w-full shrink-0 items-center gap-4 px-4 py-2 bg-neutral-950 border-b border-neutral-800">
-          <button id="theater-back-btn" class="flex items-center gap-2 text-sm text-white/90 hover:text-white transition-colors">
-            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+        <div id="theater-nav" class="hidden w-full shrink-0 items-center px-3 py-1.5 bg-black/60">
+          <button id="theater-back-btn" class="flex items-center gap-1.5 text-sm text-white/50 hover:text-white/90 transition-colors">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
             </svg>
             Volver
           </button>
-          <div class="flex gap-1">
-            <a href="#/recommended"   class="px-3 py-1 rounded-full text-xs font-medium bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-colors">Recomendados</a>
-            <a href="#/subscriptions" class="px-3 py-1 rounded-full text-xs font-medium bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-colors">Suscripciones</a>
-            <a href="#/history"       class="px-3 py-1 rounded-full text-xs font-medium bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-colors">Historial</a>
-          </div>
-          <div class="ml-auto">
-            <button id="theater-exit-btn" class="text-xs text-white/70 hover:text-white transition-colors flex items-center gap-1.5">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-              Salir (W)
-            </button>
-          </div>
         </div>
 
         <!-- Video -->
@@ -120,7 +107,6 @@ export async function renderWatch(videoId) {
   }
 
   theaterBtn.addEventListener('click', enterTheater)
-  document.getElementById('theater-exit-btn').addEventListener('click', exitTheater)
   document.getElementById('theater-back-btn').addEventListener('click', () => {
     exitTheater()
     window.history.back()
