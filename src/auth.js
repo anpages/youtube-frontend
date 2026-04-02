@@ -1,0 +1,89 @@
+// Google Identity Services — Token (implicit) flow
+// No backend required: access token obtained directly in the browser
+
+const SCOPES = 'https://www.googleapis.com/auth/youtube openid profile email'
+const STORAGE_KEY = 'yt_auth_v1'
+
+let _tokenClient = null
+let _token = null    // { access_token, expiry }
+let _userInfo = null // { id, name, email, picture }
+
+function _loadStored() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (data.expiry > Date.now()) {
+      _token = { access_token: data.access_token, expiry: data.expiry }
+      _userInfo = data.userInfo ?? null
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  } catch {}
+}
+
+async function _fetchUserInfo(accessToken) {
+  const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!res.ok) throw new Error('Failed to fetch user info')
+  return res.json()
+}
+
+function _persist() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    access_token: _token.access_token,
+    expiry: _token.expiry,
+    userInfo: _userInfo,
+  }))
+}
+
+export function initAuth() {
+  _loadStored()
+}
+
+export function signIn() {
+  if (!_tokenClient) {
+    _tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      scope: SCOPES,
+      callback: async (response) => {
+        if (response.error) {
+          console.error('OAuth error:', response.error)
+          return
+        }
+        _token = {
+          access_token: response.access_token,
+          expiry: Date.now() + response.expires_in * 1000,
+        }
+        _userInfo = await _fetchUserInfo(response.access_token)
+        _persist()
+        document.dispatchEvent(new CustomEvent('auth-changed'))
+      },
+    })
+  }
+  _tokenClient.requestAccessToken()
+}
+
+export function signOut() {
+  if (_token) {
+    window.google.accounts.oauth2.revoke(_token.access_token, () => {})
+  }
+  _token = null
+  _userInfo = null
+  localStorage.removeItem(STORAGE_KEY)
+  document.dispatchEvent(new CustomEvent('auth-changed'))
+}
+
+export function getToken() {
+  if (!_token || _token.expiry <= Date.now()) return null
+  return _token.access_token
+}
+
+export function isAuthenticated() {
+  return getToken() !== null
+}
+
+export function getUserInfo() {
+  return _userInfo
+}
