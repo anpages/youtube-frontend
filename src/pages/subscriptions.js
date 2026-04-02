@@ -10,6 +10,7 @@ let _selectedChannelId = null
 let _allVideos = []
 let _channels = []
 let _loadedUpTo = 0
+let _renderedCount = 0
 let _loading = false
 let _observer = null
 
@@ -73,29 +74,44 @@ function renderSidebar() {
     btn.addEventListener('click', () => {
       _selectedChannelId = btn.dataset.id || null
       renderSidebar()
-      renderVideoGrid()
+      renderVideoGrid(true)
     })
   })
 }
 
-function renderVideoGrid() {
+function renderVideoGrid(reset = false) {
   const grid = document.getElementById('video-grid')
   if (!grid) return
 
   const videos = getVisibleVideos()
+
+  if (reset) {
+    grid.innerHTML = ''
+    _renderedCount = 0
+  }
 
   if (videos.length === 0) {
     grid.innerHTML = `<p class="col-span-3 text-neutral-500 text-sm py-8">No hay vídeos recientes.</p>`
     return
   }
 
-  grid.innerHTML = videos.map(v => videoCard({
-    id: v.id,
-    title: v.title,
-    channelTitle: v.channelTitle,
-    thumbnail: v.thumbnail,
-    publishedAt: timeAgo(v.publishedAt),
-  })).join('')
+  const newVideos = videos.slice(_renderedCount)
+  if (newVideos.length === 0) return
+
+  const fragment = document.createDocumentFragment()
+  newVideos.forEach(v => {
+    const div = document.createElement('div')
+    div.innerHTML = videoCard({
+      id: v.id,
+      title: v.title,
+      channelTitle: v.channelTitle,
+      thumbnail: v.thumbnail,
+      publishedAt: timeAgo(v.publishedAt),
+    })
+    fragment.appendChild(div.firstElementChild)
+  })
+  grid.appendChild(fragment)
+  _renderedCount = videos.length
 }
 
 function updateSentinel() {

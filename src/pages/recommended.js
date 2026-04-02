@@ -93,19 +93,31 @@ export async function renderRecommended() {
 
     let allVideos = []
     let loadedUpTo = 0
+    let renderedCount = 0
     let loading = false
     let observer = null
 
     function renderGrid() {
       const grid = document.getElementById('rec-grid')
       if (!grid) return
-      grid.innerHTML = allVideos.map(v => videoCard({
-        id: v.id,
-        title: v.title,
-        channelTitle: v.channelTitle,
-        thumbnail: v.thumbnail,
-        publishedAt: timeAgo(v.publishedAt),
-      })).join('')
+
+      const newVideos = allVideos.slice(renderedCount)
+      if (newVideos.length === 0) return
+
+      const fragment = document.createDocumentFragment()
+      newVideos.forEach(v => {
+        const div = document.createElement('div')
+        div.innerHTML = videoCard({
+          id: v.id,
+          title: v.title,
+          channelTitle: v.channelTitle,
+          thumbnail: v.thumbnail,
+          publishedAt: timeAgo(v.publishedAt),
+        })
+        fragment.appendChild(div.firstElementChild)
+      })
+      grid.appendChild(fragment)
+      renderedCount = allVideos.length
     }
 
     function updateSentinel() {
