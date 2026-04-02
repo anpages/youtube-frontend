@@ -91,14 +91,14 @@ function renderSidebar() {
 
   sidebar.innerHTML = `
     <button
-      class="sidebar-ch w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${!_selectedChannelId ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900'}"
+      class="sidebar-ch w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${!_selectedChannelId ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900'}"
       data-id=""
     >
       Todos
     </button>
     ${_channels.map(ch => `
       <button
-        class="sidebar-ch w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${_selectedChannelId === ch.id ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900'}"
+        class="sidebar-ch w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${_selectedChannelId === ch.id ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900'}"
         data-id="${escapeHtml(ch.id)}"
       >
         ${ch.thumbnail ? `<img src="${escapeHtml(ch.thumbnail)}" alt="" class="w-6 h-6 rounded-full object-cover shrink-0" />` : ''}

@@ -32,6 +32,13 @@ html.light .border-neutral-700     { border-color: #cbd5e1; }
 html.light .placeholder-neutral-500::placeholder { color: #94a3b8; }
 /* Subnav backdrop (Tailwind generates bg-neutral-950/95 as rgba) */
 html.light #subnav                 { background-color: rgba(248,250,252,0.95) !important; }
+/* Hover states */
+html.light .hover\:bg-neutral-900:hover { background-color: #e2e8f0; }
+html.light .hover\:bg-neutral-800:hover { background-color: #cbd5e1; }
+html.light .hover\:bg-neutral-700:hover { background-color: #cbd5e1; }
+html.light .hover\:bg-neutral-600:hover { background-color: #94a3b8; }
+html.light .hover\:text-neutral-200:hover { color: #1e293b; }
+html.light .hover\:text-neutral-100:hover { color: #0f172a; }
 
 @layer utilities {
   .line-clamp-2 {
