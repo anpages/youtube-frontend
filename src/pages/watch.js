@@ -180,6 +180,8 @@ export async function renderWatch(videoId) {
 
     const theaterTitleEl = document.getElementById('theater-title')
     if (theaterTitleEl) theaterTitleEl.textContent = snippet.title
+    const subnavTitleEl = document.getElementById('subnav-title')
+    if (subnavTitleEl) subnavTitleEl.textContent = snippet.title
 
     const channelId = snippet.channelId
     const duration = parseDuration(contentDetails?.duration)
