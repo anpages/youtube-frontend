@@ -9,9 +9,10 @@ let _tokenClient = null
 let _silentClient = null
 let _refreshTimer = null
 let _expiryCleanupTimer = null
-let _token = null    // { access_token, expiry }
-let _userInfo = null // { id, name, email, picture }
+let _token = null       // { access_token, expiry }
+let _userInfo = null    // { id, name, email, picture }
 let _refreshInFlight = false
+let _sessionExpired = false // true when had a session but silent refresh failed
 
 function _loadStored() {
   try {
@@ -46,23 +47,24 @@ function _persist() {
   localStorage.setItem(SESSION_FLAG_KEY, '1')
 }
 
-// Called when a refresh attempt fails and _token is still set (timer-based failure).
-// Schedules a cleanup at the exact moment the token expires so the UI updates.
+// Called when a timer-based refresh fails and _token is still alive.
+// Schedules UI cleanup for the exact moment the token actually expires.
 function _scheduleExpiryCleanup(expiry) {
   if (_expiryCleanupTimer) clearTimeout(_expiryCleanupTimer)
   const msUntilExpiry = expiry - Date.now()
   if (msUntilExpiry <= 0) {
-    _clearAuthState()
+    _clearAuthState(true)
     return
   }
-  _expiryCleanupTimer = setTimeout(_clearAuthState, msUntilExpiry)
+  _expiryCleanupTimer = setTimeout(() => _clearAuthState(true), msUntilExpiry)
 }
 
-function _clearAuthState() {
+function _clearAuthState(expired = false) {
   _token = null
   _userInfo = null
+  _sessionExpired = expired
   localStorage.removeItem(STORAGE_KEY)
-  document.dispatchEvent(new CustomEvent('auth-changed'))
+  document.dispatchEvent(new CustomEvent('auth-changed', { detail: { sessionExpired: expired } }))
 }
 
 function _scheduleRefresh(expiry) {
@@ -83,25 +85,29 @@ function _silentRefresh() {
   if (!window.google?.accounts?.oauth2 || !import.meta.env.VITE_GOOGLE_CLIENT_ID) return
   _refreshInFlight = true
 
-  // Always create a fresh client so the callback closure captures current state
+  // Always create a fresh client to capture current _userInfo in the hint
   _silentClient = window.google.accounts.oauth2.initTokenClient({
     client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
     scope: SCOPES,
     prompt: '',
+    // hint tells GIS which Google account to use — critical on multi-account setups
+    hint: _userInfo?.email,
     callback: async (response) => {
       _refreshInFlight = false
       if (response.error || !response.access_token) {
+        console.warn('[auth] Silent refresh failed:', response.error, response.error_description)
         if (!_token) {
-          // Startup silent refresh failed — no valid session to fall back to
+          // Startup silent refresh failed — session cannot be restored silently
+          _sessionExpired = true
           _userInfo = null
-          document.dispatchEvent(new CustomEvent('auth-changed'))
+          document.dispatchEvent(new CustomEvent('auth-changed', { detail: { sessionExpired: true } }))
         } else {
-          // Timer-based refresh failed — token still valid for now.
-          // Schedule cleanup for when it actually expires so the UI reacts.
+          // Timer-based refresh failed — schedule cleanup at token expiry
           _scheduleExpiryCleanup(_token.expiry)
         }
         return
       }
+      _sessionExpired = false
       _token = {
         access_token: response.access_token,
         expiry: Date.now() + response.expires_in * 1000,
@@ -114,7 +120,18 @@ function _silentRefresh() {
       document.dispatchEvent(new CustomEvent('auth-changed'))
     },
   })
-  _silentClient.requestAccessToken({ prompt: '' })
+  _silentClient.requestAccessToken({ prompt: '', hint: _userInfo?.email })
+}
+
+// Waits for GIS to be fully initialized, then runs callback.
+// Uses the onGoogleLibraryLoad event (dispatched from index.html inline script)
+// as the reliable signal, with a fallback check in case GIS was already ready.
+function _whenGISReady(callback) {
+  if (window.google?.accounts?.oauth2) {
+    callback()
+  } else {
+    document.addEventListener('gis-ready', callback, { once: true })
+  }
 }
 
 // Checks auth state when the app becomes visible again (resume from background/suspend).
@@ -124,11 +141,10 @@ function _onVisibilityChange() {
 
   const now = Date.now()
   if (!_token || _token.expiry <= now) {
-    // Token missing or already expired — attempt silent refresh
-    _silentRefresh()
+    _whenGISReady(_silentRefresh)
   } else if (_token.expiry - now < 10 * 60 * 1000) {
-    // Token expires in less than 10 minutes — refresh proactively
-    _silentRefresh()
+    // Expires in <10 minutes — proactive refresh
+    _whenGISReady(_silentRefresh)
   }
 }
 
@@ -138,17 +154,7 @@ export function initAuth() {
     _scheduleRefresh(_token.expiry)
   } else if (localStorage.getItem(SESSION_FLAG_KEY)) {
     // Token expired but user had a session — try silent refresh once GIS is ready
-    const tryRefresh = () => {
-      if (window.google?.accounts?.oauth2) {
-        _silentRefresh()
-      } else {
-        // GIS script not ready yet, wait for it
-        window.addEventListener('load', () => {
-          if (window.google?.accounts?.oauth2) _silentRefresh()
-        }, { once: true })
-      }
-    }
-    tryRefresh()
+    _whenGISReady(_silentRefresh)
   }
 
   // Refresh session whenever the app comes back to foreground (critical for PWA/suspend)
@@ -173,6 +179,7 @@ export function signIn() {
           alert(`Error de autenticación: ${response.error}\n${response.error_description ?? ''}`)
           return
         }
+        _sessionExpired = false
         _token = {
           access_token: response.access_token,
           expiry: Date.now() + response.expires_in * 1000,
@@ -197,6 +204,7 @@ export function signOut() {
   _refreshTimer = null
   _expiryCleanupTimer = null
   _refreshInFlight = false
+  _sessionExpired = false
   if (_token) {
     window.google.accounts.oauth2.revoke(_token.access_token, () => {})
   }
@@ -218,4 +226,10 @@ export function isAuthenticated() {
 
 export function getUserInfo() {
   return _userInfo
+}
+
+// True when the user had a session that could not be silently restored.
+// Use this to show a reconnect prompt instead of a generic landing page.
+export function isSessionExpired() {
+  return _sessionExpired
 }
