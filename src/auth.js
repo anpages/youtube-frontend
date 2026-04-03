@@ -8,8 +8,10 @@ const SESSION_FLAG_KEY = 'yt_had_session'
 let _tokenClient = null
 let _silentClient = null
 let _refreshTimer = null
+let _expiryCleanupTimer = null
 let _token = null    // { access_token, expiry }
 let _userInfo = null // { id, name, email, picture }
+let _refreshInFlight = false
 
 function _loadStored() {
   try {
@@ -44,44 +46,90 @@ function _persist() {
   localStorage.setItem(SESSION_FLAG_KEY, '1')
 }
 
+// Called when a refresh attempt fails and _token is still set (timer-based failure).
+// Schedules a cleanup at the exact moment the token expires so the UI updates.
+function _scheduleExpiryCleanup(expiry) {
+  if (_expiryCleanupTimer) clearTimeout(_expiryCleanupTimer)
+  const msUntilExpiry = expiry - Date.now()
+  if (msUntilExpiry <= 0) {
+    _clearAuthState()
+    return
+  }
+  _expiryCleanupTimer = setTimeout(_clearAuthState, msUntilExpiry)
+}
+
+function _clearAuthState() {
+  _token = null
+  _userInfo = null
+  localStorage.removeItem(STORAGE_KEY)
+  document.dispatchEvent(new CustomEvent('auth-changed'))
+}
+
 function _scheduleRefresh(expiry) {
   if (_refreshTimer) clearTimeout(_refreshTimer)
+  if (_expiryCleanupTimer) clearTimeout(_expiryCleanupTimer)
   const msUntilExpiry = expiry - Date.now()
   const msUntilRefresh = msUntilExpiry - 5 * 60 * 1000 // 5 min before expiry
-  if (msUntilRefresh <= 0) return
+  if (msUntilRefresh <= 0) {
+    // Token expires in less than 5 minutes — refresh immediately
+    _silentRefresh()
+    return
+  }
   _refreshTimer = setTimeout(_silentRefresh, msUntilRefresh)
 }
 
 function _silentRefresh() {
+  if (_refreshInFlight) return
   if (!window.google?.accounts?.oauth2 || !import.meta.env.VITE_GOOGLE_CLIENT_ID) return
-  if (!_silentClient) {
-    _silentClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      scope: SCOPES,
-      prompt: '',
-      callback: async (response) => {
-        if (response.error || !response.access_token) {
-          // Silent refresh failed — clear optimistic userInfo and fire event
-          if (!_token) {
-            _userInfo = null
-            document.dispatchEvent(new CustomEvent('auth-changed'))
-          }
-          return
+  _refreshInFlight = true
+
+  // Always create a fresh client so the callback closure captures current state
+  _silentClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+    scope: SCOPES,
+    prompt: '',
+    callback: async (response) => {
+      _refreshInFlight = false
+      if (response.error || !response.access_token) {
+        if (!_token) {
+          // Startup silent refresh failed — no valid session to fall back to
+          _userInfo = null
+          document.dispatchEvent(new CustomEvent('auth-changed'))
+        } else {
+          // Timer-based refresh failed — token still valid for now.
+          // Schedule cleanup for when it actually expires so the UI reacts.
+          _scheduleExpiryCleanup(_token.expiry)
         }
-        _token = {
-          access_token: response.access_token,
-          expiry: Date.now() + response.expires_in * 1000,
-        }
-        if (!_userInfo) {
-          try { _userInfo = await _fetchUserInfo(response.access_token) } catch {}
-        }
-        _persist()
-        _scheduleRefresh(_token.expiry)
-        document.dispatchEvent(new CustomEvent('auth-changed'))
-      },
-    })
-  }
+        return
+      }
+      _token = {
+        access_token: response.access_token,
+        expiry: Date.now() + response.expires_in * 1000,
+      }
+      if (!_userInfo) {
+        try { _userInfo = await _fetchUserInfo(response.access_token) } catch {}
+      }
+      _persist()
+      _scheduleRefresh(_token.expiry)
+      document.dispatchEvent(new CustomEvent('auth-changed'))
+    },
+  })
   _silentClient.requestAccessToken({ prompt: '' })
+}
+
+// Checks auth state when the app becomes visible again (resume from background/suspend).
+function _onVisibilityChange() {
+  if (document.visibilityState !== 'visible') return
+  if (!localStorage.getItem(SESSION_FLAG_KEY)) return
+
+  const now = Date.now()
+  if (!_token || _token.expiry <= now) {
+    // Token missing or already expired — attempt silent refresh
+    _silentRefresh()
+  } else if (_token.expiry - now < 10 * 60 * 1000) {
+    // Token expires in less than 10 minutes — refresh proactively
+    _silentRefresh()
+  }
 }
 
 export function initAuth() {
@@ -102,6 +150,9 @@ export function initAuth() {
     }
     tryRefresh()
   }
+
+  // Refresh session whenever the app comes back to foreground (critical for PWA/suspend)
+  document.addEventListener('visibilitychange', _onVisibilityChange)
 }
 
 export function signIn() {
@@ -142,7 +193,10 @@ export function signIn() {
 
 export function signOut() {
   if (_refreshTimer) clearTimeout(_refreshTimer)
+  if (_expiryCleanupTimer) clearTimeout(_expiryCleanupTimer)
   _refreshTimer = null
+  _expiryCleanupTimer = null
+  _refreshInFlight = false
   if (_token) {
     window.google.accounts.oauth2.revoke(_token.access_token, () => {})
   }
