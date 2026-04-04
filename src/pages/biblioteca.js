@@ -32,7 +32,8 @@ export function renderBiblioteca() {
       const p = allProgress[v.id]
       const ratio = p && p.duration ? p.seconds / p.duration : 0
       if (ratio >= 0.05 && ratio < 0.92) inProgress.push(v)
-      else watched.push(v)
+      else if (ratio >= 0.92) watched.push(v)
+      // ratio < 0.05: being rewatched from start or barely seen — hide from both sections
     }
 
     function grid(videos, mapFn) {
