@@ -1,11 +1,8 @@
 import { renderHome } from './pages/home.js'
 import { renderWatch } from './pages/watch.js'
 import { renderSubscriptions } from './pages/subscriptions.js'
-import { renderHistory } from './pages/history.js'
+import { renderBiblioteca } from './pages/biblioteca.js'
 import { renderRecommended } from './pages/recommended.js'
-import { renderWatchLater } from './pages/watchlater.js'
-import { renderPlaylists } from './pages/playlists.js'
-import { renderPlaylist } from './pages/playlist.js'
 import { renderHeader } from './components/header.js'
 
 function getRoute() {
@@ -47,20 +44,14 @@ async function handleRoute() {
   } else if (path === '/subscriptions') {
     await renderSubscriptions()
     restoreScroll(path)
-  } else if (path === '/history') {
-    renderHistory()
+  } else if (path === '/history' || path === '/watchlater') {
+    // Legacy redirects → biblioteca
+    window.location.hash = '/biblioteca'
+  } else if (path === '/biblioteca') {
+    renderBiblioteca()
     restoreScroll(path)
   } else if (path === '/recommended') {
     await renderRecommended()
-    restoreScroll(path)
-  } else if (path === '/watchlater') {
-    renderWatchLater()
-    restoreScroll(path)
-  } else if (path === '/playlists') {
-    await renderPlaylists()
-    restoreScroll(path)
-  } else if (path === '/playlist') {
-    await renderPlaylist(params.get('id') ?? '', params.get('title') ?? '')
     restoreScroll(path)
   } else {
     app.innerHTML = `

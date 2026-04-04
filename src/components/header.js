@@ -2,11 +2,9 @@ import { isAuthenticated, getUserInfo, signIn, signOut } from '../auth.js'
 import { getQuotaUsage } from '../api.js'
 
 const NAV_LINKS = [
-  { href: '#/recommended',   label: 'Recomendados',  path: '/recommended'   },
+  { href: '#/recommended',  label: 'Recomendados',  path: '/recommended'  },
   { href: '#/subscriptions', label: 'Suscripciones', path: '/subscriptions' },
-  { href: '#/history',       label: 'Seguir viendo', path: '/history'       },
-  { href: '#/watchlater',    label: 'Ver después',   path: '/watchlater'    },
-  { href: '#/playlists',     label: 'Listas',        path: '/playlists'     },
+  { href: '#/biblioteca',   label: 'Biblioteca',    path: '/biblioteca'   },
 ]
 
 export function renderHeader(currentPath = '/') {
