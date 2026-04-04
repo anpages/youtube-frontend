@@ -85,7 +85,7 @@ export function renderHeader(currentPath = '/') {
     subnav.innerHTML = authed ? `
       <div class="max-w-7xl mx-auto px-4 flex items-center gap-1">
         ${currentPath === '/watch' ? `
-          <span id="subnav-title" class="flex-1 text-sm font-medium text-neutral-200 truncate px-1"></span>
+          <div class="ml-auto"></div>
           <button id="subnav-back-btn" class="shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-neutral-200 transition-colors">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
@@ -110,7 +110,9 @@ export function renderHeader(currentPath = '/') {
     ` : ''
   }
 
-  document.getElementById('subnav-back-btn')?.addEventListener('click', () => window.history.back())
+  if (currentPath !== '/watch') {
+    document.getElementById('subnav-back-btn')?.addEventListener('click', () => window.history.back())
+  }
 
   if (authed) {
     document.getElementById('theme-toggle-btn').addEventListener('click', () => {

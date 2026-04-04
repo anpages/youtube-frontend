@@ -21,16 +21,6 @@ export async function renderWatch(videoId) {
     <div class="max-w-4xl mx-auto px-4 pt-4">
       <div id="player-wrap" class="relative bg-black rounded-lg overflow-hidden group">
 
-        <!-- Nav bar (theater mode, hidden by default) -->
-        <div id="theater-nav" class="hidden w-full shrink-0 items-center px-4 py-2 bg-neutral-950 border-b border-neutral-800">
-          <button id="theater-back-btn" class="flex shrink-0 items-center gap-2 text-sm text-white/90 hover:text-white transition-colors">
-            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-            </svg>
-            Volver
-          </button>
-        </div>
-
         <!-- Video -->
         <div id="player-inner" class="aspect-video">
           <iframe
@@ -73,8 +63,6 @@ export async function renderWatch(videoId) {
   let theater = false
   const playerWrap = document.getElementById('player-wrap')
   const theaterBtn = document.getElementById('theater-btn')
-  const theaterNav = document.getElementById('theater-nav')
-
   const playerInner = document.getElementById('player-inner')
 
   function enterTheater() {
@@ -83,28 +71,22 @@ export async function renderWatch(videoId) {
     playerWrap.classList.remove('relative', 'rounded-lg')
     playerInner.classList.add('flex-1', 'min-h-0')
     playerInner.classList.remove('aspect-video')
-    theaterNav.classList.remove('hidden')
-    theaterNav.classList.add('flex')
     document.getElementById('header').style.display = 'none'
-    document.getElementById('subnav').style.display = 'none'
     theaterBtn.classList.add('hidden')
   }
 
   function exitTheater() {
     theater = false
-    theaterNav.classList.add('hidden')
-    theaterNav.classList.remove('flex')
     playerWrap.classList.remove('fixed', 'inset-0', 'z-40', 'rounded-none', 'flex', 'flex-col')
     playerWrap.classList.add('relative', 'rounded-lg')
     playerInner.classList.add('aspect-video')
     playerInner.classList.remove('flex-1', 'min-h-0')
     document.getElementById('header').style.display = ''
-    document.getElementById('subnav').style.display = ''
     theaterBtn.classList.remove('hidden')
   }
 
   theaterBtn.addEventListener('click', enterTheater)
-  document.getElementById('theater-back-btn').addEventListener('click', () => {
+  document.getElementById('subnav-back-btn')?.addEventListener('click', () => {
     exitTheater()
     window.history.back()
   })
@@ -178,9 +160,6 @@ export async function renderWatch(videoId) {
       channelId: snippet.channelId,
       publishedAt: snippet.publishedAt,
     })
-
-    const subnavTitleEl = document.getElementById('subnav-title')
-    if (subnavTitleEl) subnavTitleEl.textContent = snippet.title
 
     const channelId = snippet.channelId
     const duration = parseDuration(contentDetails?.duration)
