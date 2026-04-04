@@ -2,7 +2,7 @@ import { isAuthenticated, signIn } from '../auth.js'
 import { getMyPlaylists, getMyChannel } from '../api.js'
 import { escapeHtml } from '../utils.js'
 
-function playlistCard({ id, title, thumbnail, itemCount }) {
+function playlistCard({ id, title, thumbnail, itemCount, encodedTitle = '' }) {
   const thumb = thumbnail
     ? `<img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:opacity-90 transition-opacity duration-150" />`
     : `<div class="w-full h-full bg-neutral-700 flex items-center justify-center">
@@ -10,7 +10,7 @@ function playlistCard({ id, title, thumbnail, itemCount }) {
        </div>`
 
   return `
-    <a href="#/playlist?id=${encodeURIComponent(id)}" class="group flex flex-col gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-lg">
+    <a href="#/playlist?id=${encodeURIComponent(id)}&title=${encodedTitle}" class="group flex flex-col gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-lg">
       <div class="relative aspect-video bg-neutral-800 rounded-lg overflow-hidden">
         ${thumb}
         <div class="absolute inset-y-0 right-0 w-1/5 bg-neutral-900/90 flex flex-col items-center justify-center gap-0.5 border-l border-neutral-800/50">
@@ -100,6 +100,7 @@ export async function renderPlaylists() {
       title: pl.title ?? pl.snippet?.title ?? '',
       thumbnail: pl.thumbnail ?? pl.snippet?.thumbnails?.medium?.url ?? pl.snippet?.thumbnails?.default?.url ?? '',
       itemCount: pl.itemCount ?? pl.contentDetails?.itemCount ?? null,
+      encodedTitle: encodeURIComponent(pl.title ?? pl.snippet?.title ?? ''),
     })).join('')
 
     app.innerHTML = `

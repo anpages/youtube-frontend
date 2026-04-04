@@ -13,7 +13,7 @@ const SPINNER = `
   </div>
 `
 
-export async function renderPlaylist(playlistId) {
+export async function renderPlaylist(playlistId, urlTitle = '') {
   const app = document.getElementById('app')
 
   if (!playlistId) {
@@ -37,12 +37,19 @@ export async function renderPlaylist(playlistId) {
   `
 
   try {
-    const plData = await getPlaylistDetails(playlistId)
-    const pl = plData.items?.[0]
-    if (!pl) throw new Error('Lista no encontrada.')
-
-    const plTitle = pl.snippet.title
-    const plCount = pl.contentDetails?.itemCount ?? 0
+    // Fetch playlist details (non-fatal — some special playlists don't return metadata)
+    let plTitle = urlTitle || 'Lista de reproducción'
+    let plCount = null
+    try {
+      const plData = await getPlaylistDetails(playlistId)
+      const pl = plData.items?.[0]
+      if (pl) {
+        plTitle = pl.snippet.title
+        plCount = pl.contentDetails?.itemCount ?? null
+      }
+    } catch (e) {
+      console.warn('[playlist] getPlaylistDetails failed:', e.message)
+    }
 
     app.innerHTML = `
       <div class="max-w-7xl mx-auto px-4 pt-6">
@@ -54,7 +61,7 @@ export async function renderPlaylist(playlistId) {
           </a>
           <div class="min-w-0">
             <h1 class="text-xl font-bold truncate">${escapeHtml(plTitle)}</h1>
-            <p class="text-sm text-neutral-400">${escapeHtml(String(plCount))} vídeos</p>
+            ${plCount != null ? `<p class="text-sm text-neutral-400">${escapeHtml(String(plCount))} vídeos</p>` : ''}
           </div>
         </div>
         <div id="playlist-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-8"></div>
@@ -117,7 +124,15 @@ export async function renderPlaylist(playlistId) {
       }
 
       if (sentinel) {
-        sentinel.innerHTML = nextPageToken ? SPINNER : ''
+        if (nextPageToken) {
+          sentinel.innerHTML = SPINNER
+        } else {
+          sentinel.innerHTML = ''
+          const grid = document.getElementById('playlist-grid')
+          if (grid && grid.children.length === 0) {
+            grid.innerHTML = `<p class="col-span-3 text-neutral-500 text-sm py-8">Esta lista no tiene vídeos disponibles.</p>`
+          }
+        }
       }
 
       loading = false

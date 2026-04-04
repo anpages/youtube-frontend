@@ -60,7 +60,7 @@ async function handleRoute() {
     await renderPlaylists()
     restoreScroll(path)
   } else if (path === '/playlist') {
-    await renderPlaylist(params.get('id') ?? '')
+    await renderPlaylist(params.get('id') ?? '', params.get('title') ?? '')
     restoreScroll(path)
   } else {
     app.innerHTML = `
