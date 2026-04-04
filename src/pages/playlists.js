@@ -82,11 +82,14 @@ export async function renderPlaylists() {
 
     const allPlaylists = [...specialPlaylists, ...playlists]
 
+    console.log('[playlists] created:', playlists.length, 'special:', specialPlaylists.length, 'channel related:', related)
+
     if (allPlaylists.length === 0) {
       app.innerHTML = `
         <div class="max-w-7xl mx-auto px-4 pt-6">
           <h1 class="text-xl font-bold mb-6">Listas de reproducción</h1>
           <p class="text-neutral-500 text-sm py-8">No se encontraron listas de reproducción en tu cuenta de YouTube.</p>
+          <p class="text-xs text-neutral-600 mt-2">Abre las DevTools (F12 → Consola) para ver más detalles.</p>
         </div>
       `
       return

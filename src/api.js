@@ -200,7 +200,7 @@ export function getVideosDetails(ids) {
 /** Get the authenticated user's own channel info. */
 export function getMyChannel() {
   return authGet('channels', {
-    part: 'snippet,statistics',
+    part: 'snippet,statistics,contentDetails',
     mine: true,
   })
 }
