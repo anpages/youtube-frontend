@@ -1,23 +1,23 @@
 import { isAuthenticated, signIn } from '../auth.js'
-import { getMyPlaylists } from '../api.js'
+import { getMyPlaylists, getMyChannel } from '../api.js'
 import { escapeHtml } from '../utils.js'
 
 function playlistCard({ id, title, thumbnail, itemCount }) {
+  const thumb = thumbnail
+    ? `<img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:opacity-90 transition-opacity duration-150" />`
+    : `<div class="w-full h-full bg-neutral-700 flex items-center justify-center">
+        <svg class="w-8 h-8 text-neutral-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10"/></svg>
+       </div>`
+
   return `
     <a href="#/playlist?id=${encodeURIComponent(id)}" class="group flex flex-col gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-lg">
       <div class="relative aspect-video bg-neutral-800 rounded-lg overflow-hidden">
-        <img
-          src="${escapeHtml(thumbnail)}"
-          alt="${escapeHtml(title)}"
-          loading="lazy"
-          decoding="async"
-          class="w-full h-full object-cover group-hover:opacity-90 transition-opacity duration-150"
-        />
+        ${thumb}
         <div class="absolute inset-y-0 right-0 w-1/5 bg-neutral-900/90 flex flex-col items-center justify-center gap-0.5 border-l border-neutral-800/50">
           <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10"/>
           </svg>
-          <span class="text-xs text-neutral-400 tabular-nums">${escapeHtml(String(itemCount))}</span>
+          ${itemCount != null ? `<span class="text-xs text-neutral-400 tabular-nums">${escapeHtml(String(itemCount))}</span>` : ''}
         </div>
       </div>
       <div class="px-0.5">
@@ -56,28 +56,47 @@ export async function renderPlaylists() {
   `
 
   try {
-    const playlists = []
-    let pageToken = null
-    do {
+    // Fetch user-created playlists and channel special playlists in parallel
+    const [channelData, firstPage] = await Promise.all([
+      getMyChannel().catch(() => null),
+      getMyPlaylists(null),
+    ])
+
+    const playlists = [...(firstPage.items ?? [])]
+    let pageToken = firstPage.nextPageToken ?? null
+    while (pageToken) {
       const data = await getMyPlaylists(pageToken)
       playlists.push(...(data.items ?? []))
       pageToken = data.nextPageToken ?? null
-    } while (pageToken)
+    }
 
-    if (playlists.length === 0) {
+    // Build special playlist entries from channel info (Likes, Watch Later)
+    const specialPlaylists = []
+    const related = channelData?.items?.[0]?.contentDetails?.relatedPlaylists
+    if (related) {
+      if (related.likes) {
+        specialPlaylists.push({ id: related.likes, title: 'Me gusta', thumbnail: '', itemCount: null })
+      }
+      // Watch Later (WL) is restricted by YouTube API for third-party apps — skip
+    }
+
+    const allPlaylists = [...specialPlaylists, ...playlists]
+
+    if (allPlaylists.length === 0) {
       app.innerHTML = `
         <div class="max-w-7xl mx-auto px-4 pt-6">
-          <p class="text-neutral-500 text-sm py-8">No tienes listas de reproducción.</p>
+          <h1 class="text-xl font-bold mb-6">Listas de reproducción</h1>
+          <p class="text-neutral-500 text-sm py-8">No se encontraron listas de reproducción en tu cuenta de YouTube.</p>
         </div>
       `
       return
     }
 
-    const cards = playlists.map(pl => playlistCard({
+    const cards = allPlaylists.map(pl => playlistCard({
       id: pl.id,
-      title: pl.snippet.title,
-      thumbnail: pl.snippet.thumbnails?.medium?.url ?? pl.snippet.thumbnails?.default?.url ?? '',
-      itemCount: pl.contentDetails?.itemCount ?? 0,
+      title: pl.title ?? pl.snippet?.title ?? '',
+      thumbnail: pl.thumbnail ?? pl.snippet?.thumbnails?.medium?.url ?? pl.snippet?.thumbnails?.default?.url ?? '',
+      itemCount: pl.itemCount ?? pl.contentDetails?.itemCount ?? null,
     })).join('')
 
     app.innerHTML = `
@@ -89,9 +108,10 @@ export async function renderPlaylists() {
       </div>
     `
   } catch (err) {
+    console.error('[playlists]', err)
     app.innerHTML = `
       <div class="max-w-7xl mx-auto px-4 pt-6">
-        <p class="text-sm text-red-400">${escapeHtml(err.message)}</p>
+        <p class="text-sm text-red-400">Error al cargar las listas: ${escapeHtml(err.message)}</p>
       </div>
     `
   }
