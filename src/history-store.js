@@ -12,6 +12,10 @@ export function getHistory() {
   try { return JSON.parse(localStorage.getItem(KEY) ?? '[]') } catch { return [] }
 }
 
+export function removeFromHistory(id) {
+  try { localStorage.setItem(KEY, JSON.stringify(getHistory().filter(v => v.id !== id))) } catch {}
+}
+
 export function clearHistory() {
   localStorage.removeItem(KEY)
 }

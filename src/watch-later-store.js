@@ -28,6 +28,10 @@ export function toggleWatchLater({ id, title, thumbnail, channelTitle, published
   return idx < 0
 }
 
+export function removeFromWatchLater(id) {
+  try { localStorage.setItem(KEY, JSON.stringify(getWatchLater().filter(v => v.id !== id))) } catch {}
+}
+
 export function clearWatchLater() {
   try { localStorage.removeItem(KEY) } catch {}
 }
