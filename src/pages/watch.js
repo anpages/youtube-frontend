@@ -86,8 +86,8 @@ export async function renderWatch(videoId) {
     playerInner.classList.remove('aspect-video')
     theaterNav.classList.remove('hidden')
     theaterNav.classList.add('flex')
-    document.getElementById('header').classList.add('hidden')
-    document.getElementById('subnav').classList.add('hidden')
+    document.getElementById('header').style.display = 'none'
+    document.getElementById('subnav').style.display = 'none'
     theaterBtn.classList.add('hidden')
   }
 
@@ -99,8 +99,8 @@ export async function renderWatch(videoId) {
     playerWrap.classList.add('relative', 'rounded-lg')
     playerInner.classList.add('aspect-video')
     playerInner.classList.remove('flex-1', 'min-h-0')
-    document.getElementById('header').classList.remove('hidden')
-    document.getElementById('subnav').classList.remove('hidden')
+    document.getElementById('header').style.display = ''
+    document.getElementById('subnav').style.display = ''
     theaterBtn.classList.remove('hidden')
   }
 
