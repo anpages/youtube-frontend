@@ -169,6 +169,34 @@ export function unsubscribeFromChannel(subscriptionId) {
   return authDelete('subscriptions', { id: subscriptionId })
 }
 
+/** List the authenticated user's playlists (50 per page). */
+export function getMyPlaylists(pageToken = null) {
+  const params = { part: 'snippet,contentDetails', mine: true, maxResults: 50 }
+  if (pageToken) params.pageToken = pageToken
+  return authGet('playlists', params)
+}
+
+/** Fetch details for a single playlist by ID (authenticated). */
+export function getPlaylistDetails(id) {
+  return authGet('playlists', { part: 'snippet,contentDetails', id })
+}
+
+/** Fetch playlist items authenticated (supports private playlists). */
+export function getMyPlaylistVideos(playlistId, maxResults = 50, pageToken = null) {
+  const params = { part: 'snippet,contentDetails', playlistId, maxResults }
+  if (pageToken) params.pageToken = pageToken
+  return authGet('playlistItems', params)
+}
+
+/** Batch-fetch video details for up to 50 video IDs (public). */
+export function getVideosDetails(ids) {
+  return get('videos', {
+    part: 'snippet,contentDetails,statistics',
+    id: ids.join(','),
+    maxResults: 50,
+  })
+}
+
 /** Get the authenticated user's own channel info. */
 export function getMyChannel() {
   return authGet('channels', {

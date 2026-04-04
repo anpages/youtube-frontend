@@ -3,6 +3,9 @@ import { renderWatch } from './pages/watch.js'
 import { renderSubscriptions } from './pages/subscriptions.js'
 import { renderHistory } from './pages/history.js'
 import { renderRecommended } from './pages/recommended.js'
+import { renderWatchLater } from './pages/watchlater.js'
+import { renderPlaylists } from './pages/playlists.js'
+import { renderPlaylist } from './pages/playlist.js'
 import { renderHeader } from './components/header.js'
 
 function getRoute() {
@@ -49,6 +52,15 @@ async function handleRoute() {
     restoreScroll(path)
   } else if (path === '/recommended') {
     await renderRecommended()
+    restoreScroll(path)
+  } else if (path === '/watchlater') {
+    renderWatchLater()
+    restoreScroll(path)
+  } else if (path === '/playlists') {
+    await renderPlaylists()
+    restoreScroll(path)
+  } else if (path === '/playlist') {
+    await renderPlaylist(params.get('id') ?? '')
     restoreScroll(path)
   } else {
     app.innerHTML = `

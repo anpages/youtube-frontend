@@ -5,6 +5,8 @@ const NAV_LINKS = [
   { href: '#/recommended',   label: 'Recomendados',  path: '/recommended'   },
   { href: '#/subscriptions', label: 'Suscripciones', path: '/subscriptions' },
   { href: '#/history',       label: 'Seguir viendo', path: '/history'       },
+  { href: '#/watchlater',    label: 'Ver después',   path: '/watchlater'    },
+  { href: '#/playlists',     label: 'Listas',        path: '/playlists'     },
 ]
 
 export function renderHeader(currentPath = '/') {
@@ -81,9 +83,9 @@ export function renderHeader(currentPath = '/') {
 
   const subnav = document.getElementById('subnav')
   if (subnav) {
-    subnav.className = authed ? 'sticky top-0 z-50 bg-neutral-950/95 backdrop-blur-sm border-b border-neutral-800' : ''
+    subnav.className = authed ? 'sticky top-0 z-50 bg-neutral-950/95 backdrop-blur-sm border-b border-neutral-800 overflow-x-auto' : ''
     subnav.innerHTML = authed ? `
-      <div class="max-w-7xl mx-auto px-4 flex items-center gap-1">
+      <div class="max-w-7xl mx-auto px-4 flex items-center gap-1 min-w-max">
         ${NAV_LINKS.map(({ href, label, path }) => `
           <a href="${href}" class="px-3 py-2 text-sm font-medium transition-colors ${currentPath === path ? 'text-neutral-100 border-b-2 border-red-500' : 'text-neutral-400 hover:text-neutral-200'}">
             ${label}
