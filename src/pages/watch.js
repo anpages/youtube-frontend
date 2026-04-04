@@ -84,7 +84,10 @@ export async function renderWatch(videoId) {
     playerWrap.classList.remove('relative', 'rounded-lg')
     playerInner.classList.add('flex-1', 'min-h-0')
     playerInner.classList.remove('aspect-video')
+    theaterNav.classList.remove('hidden')
+    theaterNav.classList.add('flex')
     document.getElementById('header').classList.add('hidden')
+    document.getElementById('subnav').classList.add('hidden')
     theaterBtn.classList.add('hidden')
   }
 
@@ -97,6 +100,7 @@ export async function renderWatch(videoId) {
     playerInner.classList.add('aspect-video')
     playerInner.classList.remove('flex-1', 'min-h-0')
     document.getElementById('header').classList.remove('hidden')
+    document.getElementById('subnav').classList.remove('hidden')
     theaterBtn.classList.remove('hidden')
   }
 
