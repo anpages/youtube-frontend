@@ -22,8 +22,7 @@ export async function renderWatch(videoId) {
       <div id="player-wrap" class="relative bg-black rounded-lg overflow-hidden group">
 
         <!-- Nav bar (theater mode, hidden by default) -->
-        <div id="theater-nav" class="hidden w-full shrink-0 items-center justify-between px-4 py-2 bg-neutral-950 border-b border-neutral-800">
-          <span id="theater-title" class="text-sm text-white/90 truncate mr-4"></span>
+        <div id="theater-nav" class="hidden w-full shrink-0 items-center px-4 py-2 bg-neutral-950 border-b border-neutral-800">
           <button id="theater-back-btn" class="flex shrink-0 items-center gap-2 text-sm text-white/90 hover:text-white transition-colors">
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
@@ -180,8 +179,6 @@ export async function renderWatch(videoId) {
       publishedAt: snippet.publishedAt,
     })
 
-    const theaterTitleEl = document.getElementById('theater-title')
-    if (theaterTitleEl) theaterTitleEl.textContent = snippet.title
     const subnavTitleEl = document.getElementById('subnav-title')
     if (subnavTitleEl) subnavTitleEl.textContent = snippet.title
 
