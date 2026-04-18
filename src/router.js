@@ -13,12 +13,38 @@ function getRoute() {
   return { path: path || '/', params }
 }
 
+let _prevPath = null
+const _scrollSave = {}
+
+function saveScroll(path) {
+  if (path === '/subscriptions') {
+    const el = document.getElementById('video-scroll')
+    if (el) _scrollSave[path] = el.scrollTop
+  } else {
+    _scrollSave[path] = window.scrollY
+  }
+}
+
+function restoreScroll(path) {
+  const y = _scrollSave[path] ?? 0
+  if (path === '/subscriptions') {
+    document.getElementById('video-scroll')?.scrollTo({ top: y })
+  } else if (y > 0) {
+    requestAnimationFrame(() => window.scrollTo(0, y))
+  }
+}
+
 async function handleRoute() {
   const { path, params } = getRoute()
+  const fromWatch = _prevPath === '/watch'
+
+  if (_prevPath) saveScroll(_prevPath)
 
   renderHeader(path)
 
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  if (!fromWatch) {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const app = document.getElementById('app')
   app.innerHTML = ''
@@ -29,13 +55,16 @@ async function handleRoute() {
     await renderWatch(params.get('v') ?? '')
   } else if (path === '/subscriptions') {
     await renderSubscriptions()
+    if (fromWatch) restoreScroll(path)
   } else if (path === '/history' || path === '/watchlater') {
     // Legacy redirects → biblioteca
     window.location.hash = '/biblioteca'
   } else if (path === '/biblioteca') {
     renderBiblioteca()
+    if (fromWatch) restoreScroll(path)
   } else if (path === '/recommended') {
     await renderRecommended()
+    if (fromWatch) restoreScroll(path)
   } else {
     app.innerHTML = `
       <div class="text-center py-24 space-y-3">
@@ -44,6 +73,8 @@ async function handleRoute() {
       </div>
     `
   }
+
+  _prevPath = path
 }
 
 export function initRouter() {
