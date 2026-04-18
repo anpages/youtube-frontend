@@ -161,8 +161,8 @@ function renderSidebar() {
       if (id) {
         startChannelView(id)
       } else {
-        window.scrollTo(0, 0)
-        document.querySelector('aside')?.scrollTo(0, 0)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        document.querySelector('aside')?.scrollTo({ top: 0, behavior: 'smooth' })
         renderVideoGrid(true)
         updateSentinel()
         setupInfiniteScroll()
@@ -305,8 +305,8 @@ async function startChannelView(channelId) {
   _chLoading = false
   _observer?.disconnect()
 
-  window.scrollTo(0, 0)
-  document.querySelector('aside')?.scrollTo(0, 0)
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  document.querySelector('aside')?.scrollTo({ top: 0, behavior: 'smooth' })
 
   const grid = document.getElementById('video-grid')
   if (grid) grid.innerHTML = ''
