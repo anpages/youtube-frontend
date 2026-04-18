@@ -91,6 +91,10 @@ export async function renderWatch(videoId) {
 
   enterTheater()
 
+  window.addEventListener('hashchange', () => {
+    if (theater) exitTheater()
+  }, { once: true })
+
   document.addEventListener('keydown', function onKey(e) {
     if (e.key === 'Escape' && theater) exitTheater()
     if (e.key.toLowerCase() === 'w' && document.activeElement?.tagName !== 'INPUT') {

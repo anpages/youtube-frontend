@@ -161,6 +161,8 @@ function renderSidebar() {
       if (id) {
         startChannelView(id)
       } else {
+        window.scrollTo(0, 0)
+        document.querySelector('aside')?.scrollTo(0, 0)
         renderVideoGrid(true)
         updateSentinel()
         setupInfiniteScroll()
@@ -302,6 +304,9 @@ async function startChannelView(channelId) {
   _chRenderedCount = 0
   _chLoading = false
   _observer?.disconnect()
+
+  window.scrollTo(0, 0)
+  document.querySelector('aside')?.scrollTo(0, 0)
 
   const grid = document.getElementById('video-grid')
   if (grid) grid.innerHTML = ''
