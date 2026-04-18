@@ -18,9 +18,10 @@ async function handleRoute() {
 
   renderHeader(path)
 
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+
   const app = document.getElementById('app')
   app.innerHTML = ''
-  window.scrollTo({ top: 0, behavior: 'smooth' })
 
   if (path === '/') {
     await renderHome()
