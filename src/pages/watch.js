@@ -28,7 +28,7 @@ export async function renderWatch(videoId) {
             src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0&modestbranding=1&autoplay=1&enablejsapi=1${startAt > 0 ? `&start=${startAt}` : ''}"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowfullscreen
-            loading="lazy"
+            loading="eager"
             class="w-full h-full border-0"
             title="Video player"
           ></iframe>
