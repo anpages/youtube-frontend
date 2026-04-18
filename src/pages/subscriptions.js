@@ -305,8 +305,8 @@ async function startChannelView(channelId) {
   _chLoading = false
   _observer?.disconnect()
 
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-  document.querySelector('aside')?.scrollTo({ top: 0, behavior: 'smooth' })
+  document.getElementById('video-scroll')?.scrollTo({ top: 0, behavior: 'smooth' })
+  document.getElementById('sub-aside')?.scrollTo({ top: 0, behavior: 'smooth' })
 
   const grid = document.getElementById('video-grid')
   if (grid) grid.innerHTML = ''
@@ -342,30 +342,32 @@ async function loadChannelPage(ch) {
 function setupChannelScroll(ch) {
   _observer?.disconnect()
   const sentinel = document.getElementById('sub-sentinel')
+  const root = document.getElementById('video-scroll')
   if (!sentinel || !_chNextPageToken) return
   _observer = new IntersectionObserver(entries => {
     if (entries[0].isIntersecting) loadChannelPage(ch)
-  }, { rootMargin: '200px' })
+  }, { root, rootMargin: '200px' })
   _observer.observe(sentinel)
 }
 
 function setupInfiniteScroll() {
   _observer?.disconnect()
   const sentinel = document.getElementById('sub-sentinel')
+  const root = document.getElementById('video-scroll')
   if (!sentinel) return
   _observer = new IntersectionObserver(entries => {
     if (entries[0].isIntersecting) loadNextBatch()
-  }, { rootMargin: '200px' })
+  }, { root, rootMargin: '200px' })
   _observer.observe(sentinel)
 }
 
 function buildLayout() {
   return `
-    <div class="flex">
-      <aside style="position:sticky;top:37px;height:calc(100vh - 37px)" class="w-72 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto">
+    <div class="flex" style="height:calc(100vh - 37px)">
+      <aside id="sub-aside" class="w-72 shrink-0 border-r border-neutral-800 py-3 px-2 space-y-0.5 overflow-y-auto">
         <div id="sub-sidebar" class="space-y-0.5"></div>
       </aside>
-      <div class="flex-1 min-w-0 px-4 py-4">
+      <div id="video-scroll" class="flex-1 min-w-0 overflow-y-auto px-4 py-4">
         <div id="video-grid" class="grid grid-cols-3 gap-x-6 gap-y-8"></div>
         <div id="sub-sentinel"></div>
       </div>
